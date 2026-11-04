@@ -1,0 +1,1422 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="author" content="Gustavo Lazarte">
+<meta name="description" content="El Enigma de la Luz — Recurso didáctico interactivo PROMEF 2026">
+<title>El Enigma de la luz — PROMEF 2026 · G. Lazarte</title>
+<style>
+  :root {
+    --bg:#0a0a1a; --bg2:#12122a; --text:#e8e8f0;
+    --accent:#ffd54a; --accent2:#4ad4ff;
+    --card:rgba(30,30,60,0.85); --border:rgba(255,213,74,0.3);
+    --wave:#4ad4ff; --particle:#ff7a4a;
+  }
+  body.light {
+    --bg:#f4f4fa; --bg2:#fff; --text:#1a1a2a;
+    --accent:#d4a017; --accent2:#0077aa;
+    --card:rgba(255,255,255,0.95); --border:rgba(212,160,23,0.4);
+    --wave:#0077aa; --particle:#cc5500;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:'Segoe UI',system-ui,sans-serif;background:radial-gradient(ellipse at top,var(--bg2),var(--bg));color:var(--text);min-height:100vh;overflow-x:hidden;transition:background .6s,color .6s}
+  .stars{position:fixed;inset:0;pointer-events:none;z-index:0;overflow:hidden}
+  .star{position:absolute;width:2px;height:2px;background:var(--accent);border-radius:50%;animation:twinkle 3s infinite alternate}
+  @keyframes twinkle{from{opacity:.2;transform:scale(.8)}to{opacity:1;transform:scale(1.4)}}
+  header{position:relative;z-index:2;text-align:center;padding:2.5rem 1rem 1rem}
+  h1{font-size:clamp(1.5rem,4vw,2.6rem);background:linear-gradient(90deg,var(--accent),var(--accent2),var(--accent));background-size:200% auto;-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;animation:shine 4s linear infinite;letter-spacing:1px}
+  @keyframes shine{to{background-position:200% center}}
+  .subtitle{margin-top:.5rem;font-size:.92rem;opacity:.75;font-style:italic}
+
+  /* ===== MENÚ SIEMPRE VISIBLE, POR ENCIMA DEL SHOW ===== */
+  .controls{
+    position:sticky;top:0;z-index:90;
+    display:flex;justify-content:center;gap:.5rem;flex-wrap:wrap;
+    padding:.9rem 1rem;
+    background:rgba(18,18,42,0.92);
+    border-bottom:1px solid var(--border);
+    backdrop-filter:blur(14px);
+    box-shadow:0 4px 20px rgba(0,0,0,.25);
+  }
+  body.light .controls{background:rgba(255,255,255,0.92)}
+  .btn{background:var(--card);border:1px solid var(--border);color:var(--text);padding:.5rem 1rem;border-radius:999px;cursor:pointer;font-size:.85rem;transition:all .25s;backdrop-filter:blur(8px)}
+  .btn:hover{background:var(--accent);color:#000;transform:translateY(-2px);box-shadow:0 6px 20px rgba(255,213,74,.35)}
+  .btn.active{background:var(--accent);color:#000;font-weight:600}
+  .btn:disabled{opacity:.35;cursor:not-allowed;transform:none!important}
+
+  .panel{max-width:1000px;margin:1.5rem auto 3rem;background:var(--card);border:1px solid var(--border);border-radius:18px;padding:1.8rem;display:none;position:relative;z-index:2;backdrop-filter:blur(10px)}
+  .panel.show{display:block;animation:appear .5s forwards}
+  .panel h3{color:var(--accent);margin-bottom:1rem;font-size:1.3rem}
+  @keyframes appear{from{opacity:0;transform:translateY(15px)}to{opacity:1;transform:translateY(0)}}
+  .caption{font-size:.88rem;opacity:.85;line-height:1.5;margin-top:.8rem;text-align:center}
+
+  .timeline-wrap{padding:1rem 0}
+  .timeline{position:relative;display:flex;flex-direction:column;gap:1.6rem}
+  .beam{position:absolute;top:0;left:50%;width:3px;height:100%;background:linear-gradient(180deg,transparent,var(--accent) 10%,var(--accent2) 50%,var(--accent) 90%,transparent);transform:translateX(-50%);box-shadow:0 0 25px var(--accent),0 0 60px var(--accent2);opacity:.35;border-radius:3px}
+  .event{position:relative;display:flex;align-items:center;gap:1.5rem;opacity:0;transform:translateY(30px);animation:appear .6s forwards}
+  .event:nth-child(odd){flex-direction:row}
+  .event:nth-child(even){flex-direction:row-reverse}
+  .node{flex-shrink:0;width:70px;height:70px;border-radius:50%;background:radial-gradient(circle at 30% 30%,var(--accent),#ff8a00);display:grid;place-items:center;font-weight:700;font-size:.85rem;color:#1a1a00;cursor:pointer;box-shadow:0 0 20px var(--accent),0 0 40px rgba(255,213,74,.4);transition:transform .3s,box-shadow .3s;z-index:3;border:3px solid var(--bg);text-align:center;line-height:1.05;padding:4px}
+  .node:hover,.node.active{transform:scale(1.18);box-shadow:0 0 35px var(--accent),0 0 70px var(--accent2)}
+  .node.particle{background:radial-gradient(circle at 30% 30%,var(--particle),#cc3300);color:#fff}
+  .node.wave{background:radial-gradient(circle at 30% 30%,var(--wave),#0055aa);color:#fff}
+  .node.quantum{background:conic-gradient(from 0deg,var(--accent),var(--accent2),var(--particle),var(--accent));color:#fff;animation:spin 6s linear infinite}
+  @keyframes spin{to{transform:rotate(360deg)}}
+  .card{flex:1;background:rgba(20,20,40,.55);border:1px solid var(--border);border-radius:16px;padding:1.2rem 1.4rem;backdrop-filter:blur(10px);box-shadow:0 8px 30px rgba(0,0,0,.35);transition:all .3s;cursor:pointer}
+  body.light .card{background:rgba(255,255,255,.7)}
+  .card:hover{border-color:var(--accent);box-shadow:0 10px 40px rgba(255,213,74,.25)}
+  .year{font-size:1.4rem;font-weight:800;color:var(--accent);letter-spacing:1px}
+  .title{font-size:1.02rem;font-weight:700;margin:.3rem 0 .6rem}
+  .desc{font-size:.88rem;line-height:1.55;opacity:.85}
+  .debate{margin-top:.9rem;padding:.7rem .9rem;border-left:3px solid var(--accent2);background:rgba(74,212,255,.08);border-radius:8px;font-size:.84rem;font-style:italic;display:none}
+  .debate.show{display:block;animation:appear .4s forwards}
+  .debate strong{color:var(--accent2);font-style:normal}
+
+  .quiz-header{margin-bottom:.9rem}
+  .quiz-bar{height:6px;background:rgba(255,255,255,.12);border-radius:999px;overflow:hidden;margin-top:.5rem}
+  body.light .quiz-bar{background:rgba(0,0,0,.08)}
+  .quiz-bar-fill{height:100%;width:0%;background:linear-gradient(90deg,var(--accent),var(--accent2));transition:width .4s ease;box-shadow:0 0 12px var(--accent)}
+  .quiz-nav{display:flex;flex-wrap:wrap;gap:.4rem;margin-bottom:1rem;padding-bottom:.9rem;border-bottom:1px solid var(--border)}
+  .quiz-dot{width:32px;height:32px;border-radius:50%;border:2px solid var(--border);background:transparent;color:var(--text);font-weight:700;font-size:.82rem;cursor:pointer;transition:all .2s;display:grid;place-items:center}
+  .quiz-dot:hover{transform:scale(1.15);border-color:var(--accent)}
+  .quiz-dot.current{background:var(--accent2);color:#001a22;border-color:var(--accent2);box-shadow:0 0 15px var(--accent2)}
+  .quiz-dot.correct{background:#50dc78;color:#003318;border-color:#50dc78}
+  .quiz-dot.wrong{background:#ff5050;color:#330000;border-color:#ff5050}
+  .quiz-dot.current.correct,.quiz-dot.current.wrong{outline:3px solid var(--accent);outline-offset:2px}
+  .quiz-q{font-size:1.05rem;font-weight:600;margin-bottom:1rem}
+  .quiz-opt{display:block;width:100%;text-align:left;margin:.5rem 0;padding:.75rem 1rem;border-radius:10px;border:1px solid var(--border);background:transparent;color:var(--text);cursor:pointer;transition:all .2s;font-size:.9rem}
+  .quiz-opt:hover{background:rgba(255,213,74,.15)}
+  .quiz-opt.correct{background:rgba(80,220,120,.3);border-color:#50dc78}
+  .quiz-opt.wrong{background:rgba(255,80,80,.25);border-color:#ff5050}
+  .quiz-feedback{margin-top:.8rem;font-size:.9rem;min-height:1.2rem;font-weight:600}
+  .quiz-progress{font-size:.8rem;opacity:.7;margin-bottom:.5rem}
+  .quiz-actions{display:flex;justify-content:space-between;gap:.8rem;margin-top:1.2rem;padding-top:1rem;border-top:1px solid var(--border);flex-wrap:wrap}
+
+  .ds-controls{margin:1.2rem 0;padding:1rem;background:rgba(0,0,0,.2);border-radius:12px;border:1px solid var(--border)}
+  body.light .ds-controls{background:rgba(0,0,0,.03)}
+  .slider-row{display:flex;align-items:center;gap:1rem;margin:.6rem 0;font-size:.88rem;flex-wrap:wrap}
+  .slider-row label{flex:0 0 190px}
+  .slider-row input[type=range]{flex:1;min-width:120px;accent-color:var(--accent);cursor:pointer}
+  .slider-row .value{flex:0 0 40px;text-align:right;font-weight:700;color:var(--accent);font-variant-numeric:tabular-nums}
+  .slider-row select{background:var(--card);color:var(--text);border:1px solid var(--border);border-radius:8px;padding:.35rem .7rem;font-size:.88rem;cursor:pointer}
+
+  .toggle-row{display:flex;gap:.6rem;justify-content:center;margin:1rem 0;flex-wrap:wrap}
+  canvas{max-width:100%;border-radius:12px;background:rgba(0,0,0,.3);display:block;margin:0 auto;height:auto}
+
+  .em-bar{display:flex;height:90px;border-radius:12px;overflow:hidden;margin:1rem 0;cursor:pointer;border:2px solid var(--border);box-shadow:0 0 30px rgba(0,0,0,.3)}
+  .em-region{flex:1;display:grid;place-items:center;color:#fff;font-weight:700;font-size:.7rem;text-align:center;padding:.3rem;transition:all .3s;text-shadow:0 1px 3px rgba(0,0,0,.7);letter-spacing:.5px}
+  .em-region:hover{flex:1.6;box-shadow:inset 0 0 30px rgba(255,255,255,.4)}
+  .em-region.active{flex:1.6;box-shadow:inset 0 0 40px rgba(255,255,255,.6);outline:3px solid var(--accent);z-index:2}
+  .em-info{background:rgba(0,0,0,.25);border-radius:12px;padding:1.2rem;margin-top:1rem;border:1px solid var(--border);min-height:140px;animation:appear .4s forwards}
+  body.light .em-info{background:rgba(0,0,0,.03)}
+  .em-info h4{color:var(--accent);margin-bottom:.5rem;font-size:1.1rem}
+  .em-info .metrics{display:flex;gap:.7rem;flex-wrap:wrap;margin:.6rem 0;font-size:.84rem}
+  .em-info .metrics span{background:rgba(255,213,74,.15);padding:.3rem .7rem;border-radius:8px}
+  .em-info ul{margin:.5rem 0 0 1.2rem;font-size:.86rem;line-height:1.6}
+  .em-info .sorpresa{margin-top:.8rem;padding:.7rem;background:rgba(74,212,255,.12);border-left:3px solid var(--accent2);border-radius:8px;font-size:.85rem}
+  .em-info .sorpresa strong{color:var(--accent2)}
+
+  .laser-grid{display:grid;grid-template-columns:1fr 1fr;gap:1rem;margin-top:1rem}
+  @media(max-width:640px){.laser-grid{grid-template-columns:1fr}}
+  .laser-card{background:rgba(0,0,0,.2);border-radius:12px;padding:1rem;border:1px solid var(--border)}
+  body.light .laser-card{background:rgba(0,0,0,.03)}
+  .laser-card h4{color:var(--accent);font-size:.98rem;margin-bottom:.5rem}
+  .laser-card p,.laser-card ul{font-size:.84rem;line-height:1.5;opacity:.9}
+  .laser-card ul{margin:.5rem 0 0 1.2rem}
+
+  .modal-bg{position:fixed;inset:0;background:rgba(0,0,0,.7);backdrop-filter:blur(6px);display:none;place-items:center;z-index:120;padding:1rem}
+  .modal-bg.show{display:grid}
+  .modal{background:var(--bg2);border:2px solid var(--accent);border-radius:20px;max-width:600px;width:100%;padding:2rem;box-shadow:0 0 60px var(--accent);animation:zoomIn .4s}
+  @keyframes zoomIn{from{transform:scale(.8);opacity:0}to{transform:scale(1);opacity:1}}
+  .modal h2{color:var(--accent);margin-bottom:.5rem;font-size:1.3rem}
+  .modal p{line-height:1.6;margin-bottom:1rem;font-size:.94rem}
+  .modal .close{float:right;background:none;border:1px solid var(--border);color:var(--text);border-radius:50%;width:32px;height:32px;cursor:pointer;font-size:1rem}
+
+  /* ============================================================
+     SHOW DE LUCES REACTIVO (queda DEBAJO del menú, encima del resto)
+     ============================================================ */
+  .light-show{
+    position:fixed;inset:0;z-index:80;
+    pointer-events:none;opacity:0;visibility:hidden;
+    transition:opacity 1.2s ease, visibility 0s linear 1.2s;
+    overflow:hidden;
+    background:radial-gradient(ellipse at center, rgba(10,5,30,0.85), rgba(0,0,0,0.95));
+  }
+  .light-show.active{opacity:1;visibility:visible;transition:opacity 1s ease, visibility 0s}
+
+  .ls-beam{
+    position:absolute;top:50%;left:50%;
+    width:200vmax;height:8px;
+    background:linear-gradient(90deg,transparent 0%,var(--accent) 20%,var(--accent2) 50%,var(--accent) 80%,transparent 100%);
+    transform-origin:center;
+    transform:translate(-50%,-50%) rotate(0deg) scaleY(1);
+    filter:blur(2px);mix-blend-mode:screen;opacity:.75;
+    transition:transform .08s ease-out, opacity .1s ease-out;
+  }
+  .ls-beam-1{animation:beamSpin 8s linear infinite}
+  .ls-beam-2{animation:beamSpin 11s linear infinite reverse}
+  .ls-beam-3{animation:beamSpin 14s linear infinite;height:4px;opacity:.55}
+  .ls-beam-4{animation:beamSpin 9s linear infinite reverse;height:12px;opacity:.4;filter:blur(6px)}
+  @keyframes beamSpin{to{transform:translate(-50%,-50%) rotate(360deg) scaleY(1)}}
+
+  .ls-pulse{
+    position:absolute;top:50%;left:50%;width:60vmin;height:60vmin;border-radius:50%;
+    background:radial-gradient(circle,rgba(255,213,74,0.5) 0%,rgba(74,212,255,0.3) 40%,transparent 70%);
+    transform:translate(-50%,-50%) scale(1);
+    animation:pulseExpand 3.5s ease-out infinite;
+    filter:blur(20px);
+    transition:transform .1s ease-out, opacity .1s;
+  }
+  @keyframes pulseExpand{
+    0%{transform:translate(-50%,-50%) scale(0.6);opacity:0.9}
+    100%{transform:translate(-50%,-50%) scale(2.8);opacity:0}
+  }
+
+  .ls-particles{position:absolute;inset:0;overflow:hidden}
+  .ls-particle{
+    position:absolute;width:4px;height:4px;border-radius:50%;
+    background:var(--accent);
+    box-shadow:0 0 12px var(--accent),0 0 24px var(--accent2);
+    animation:particleFloat linear infinite;
+    opacity:0;
+    transition:transform .05s ease-out;
+  }
+  @keyframes particleFloat{
+    0%{transform:translateY(100vh) scale(0.4);opacity:0}
+    20%{opacity:1}
+    80%{opacity:0.9}
+    100%{transform:translateY(-10vh) scale(1.2);opacity:0}
+  }
+
+  .ls-title{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);text-align:center;z-index:5;pointer-events:none;padding:2rem}
+  .ls-title-line1{
+    font-size:clamp(1.4rem,5vw,3.4rem);font-weight:900;letter-spacing:6px;
+    background:linear-gradient(90deg,var(--accent),var(--accent2),var(--particle),var(--accent));
+    background-size:300% auto;-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;
+    animation:shine 3s linear infinite, titleGlow 2.5s ease-in-out infinite alternate;
+    text-shadow:0 0 40px rgba(255,213,74,0.4);
+    transition:transform .1s ease-out;
+  }
+  .ls-title-line2{
+    margin-top:.8rem;font-size:clamp(.9rem,2vw,1.3rem);color:var(--text);
+    letter-spacing:4px;opacity:.9;
+    animation:fadeInUp 1.5s ease both;animation-delay:.6s;
+  }
+  .ls-hint{
+    margin-top:2rem;font-size:.85rem;letter-spacing:3px;color:var(--accent);opacity:.6;
+    animation:blinkHint 2s ease-in-out infinite;
+  }
+  @keyframes titleGlow{
+    from{filter:drop-shadow(0 0 20px rgba(255,213,74,0.4))}
+    to{filter:drop-shadow(0 0 50px rgba(74,212,255,0.8))}
+  }
+  @keyframes fadeInUp{from{opacity:0;transform:translateY(20px)}to{opacity:.9;transform:translateY(0)}}
+  @keyframes blinkHint{0%,100%{opacity:.25}50%{opacity:.9}}
+
+  #btnMusic.active{
+    background:linear-gradient(90deg,var(--accent),var(--particle));
+    color:#1a1a00;
+    animation:musicPulse 1.5s ease-in-out infinite;
+  }
+  @keyframes musicPulse{
+    0%,100%{box-shadow:0 0 15px var(--accent)}
+    50%{box-shadow:0 0 35px var(--accent),0 0 60px var(--particle)}
+  }
+
+  footer{text-align:center;padding:2rem 1rem;font-size:.78rem;opacity:.55;position:relative;z-index:2}
+  @media(max-width:640px){
+    .event,.event:nth-child(even){flex-direction:column;text-align:center}
+    .node{width:60px;height:60px;font-size:.72rem}
+    .slider-row label{flex:0 0 100%}
+    .slider-row .value{flex:0 0 auto}
+  }
+</style>
+</head>
+<body>
+
+<div class="stars" id="stars"></div>
+
+<!-- ============ SHOW DE LUCES ============ -->
+<div id="lightShow" class="light-show">
+  <div class="ls-beam ls-beam-1"></div>
+  <div class="ls-beam ls-beam-2"></div>
+  <div class="ls-beam ls-beam-3"></div>
+  <div class="ls-beam ls-beam-4"></div>
+  <div class="ls-pulse" id="lsPulse"></div>
+  <div class="ls-particles" id="lsParticles"></div>
+  <div class="ls-title">
+    <div class="ls-title-line1" id="lsTitle1">EL ENIGMA DE LA LUZ</div>
+    <div class="ls-title-line2">✨ Bendita la luz ✨</div>
+    <div class="ls-hint">Toca cualquier botón para comenzar</div>
+  </div>
+</div>
+
+<header>
+  <h1>✨ El ENIGMA DE LA LUZ ✨</h1>
+  <p class="subtitle">De Alhacén al láser cuántico: un viaje interactivo por 1000 años de descubrimientos</p>
+  <p style="margin-top:.6rem;font-size:.82rem;letter-spacing:2px;color:var(--accent);opacity:.85;font-weight:600;">
+    UNC - FCEFyN - DEPARTAMENTO DE FÍSICA - PROMEF - 2026
+  </p>
+</header>
+
+<!-- ============ MENÚ ============ -->
+<div class="controls">
+  <button class="btn" id="btnMusic">🎵 Iniciar experiencia</button>
+  <button class="btn active" id="btnTimeline">📜 Línea de Tiempo</button>
+  <button class="btn" id="btnQuiz">🎯 Quiz</button>
+  <button class="btn" id="btnDS">🎯🎯 Doble Rendija</button>
+  <button class="btn" id="btnEM">📻 Espectro EM</button>
+  <button class="btn" id="btnLaser">🔴 LASER</button>
+  <button class="btn" id="btnAll">📖 Debates</button>
+  <button class="btn" id="btnTheme">🌗 Luz</button>
+</div>
+
+<!-- ============ TIMELINE ============ -->
+<div class="panel show" id="timelinePanel">
+  <h3>📜 Línea de Tiempo del Enigma de la Luz</h3>
+  <p class="caption" style="text-align:left;">Haz clic en cada nodo o tarjeta para ver el detalle. Activa "Debates" para preguntas socráticas.</p>
+  <div class="timeline-wrap">
+    <div class="beam"></div>
+    <div class="timeline" id="timeline"></div>
+  </div>
+</div>
+
+<!-- ============ QUIZ ============ -->
+<div class="panel" id="quizBox">
+  <div class="quiz-header">
+    <div class="quiz-progress" id="quizProgress"></div>
+    <div class="quiz-bar"><div class="quiz-bar-fill" id="quizBarFill"></div></div>
+  </div>
+  <div class="quiz-nav" id="quizNav"></div>
+  <div class="quiz-q" id="quizQ"></div>
+  <div id="quizOpts"></div>
+  <div class="quiz-feedback" id="quizFb"></div>
+  <div class="quiz-actions">
+    <button class="btn" id="quizPrev">← Anterior</button>
+    <button class="btn" id="quizShuffle">🔀 Mezclar preguntas</button>
+    <button class="btn" id="quizNext">Siguiente →</button>
+  </div>
+</div>
+
+<!-- ============ DOBLE RENDIJA ============ -->
+<div class="panel" id="dsPanel">
+  <h3>🎯🎯 El Experimento de la Doble Rendija</h3>
+  <p class="caption" style="text-align:left;">
+    El experimento más famoso de la física cuántica. Observa cómo las ondas interfieren entre sí,
+    y cómo las partículas individuales <em>construyen</em> ese mismo patrón al acumularse.
+    Cambia los controles y mira cómo se transforma el patrón en tiempo real.
+  </p>
+
+  <canvas id="dsCanvas" width="700" height="440"></canvas>
+
+  <div class="toggle-row">
+    <button class="btn active" id="dsWaveBtn">🌊 Modo onda</button>
+    <button class="btn" id="dsPartBtn">⚛️ Modo partícula</button>
+    <button class="btn" id="dsReset">🔄 Reiniciar acumulación</button>
+  </div>
+
+  <div class="ds-controls">
+    <div class="slider-row">
+      <label>Número de rendijas:</label>
+      <select id="dsSlits">
+        <option value="1">1 rendija (difracción)</option>
+        <option value="2" selected>2 rendijas (interferencia)</option>
+      </select>
+    </div>
+    <div class="slider-row">
+      <label>Separación entre rendijas:</label>
+      <input type="range" id="dsSep" min="20" max="110" value="60">
+      <span class="value" id="dsSepVal">60</span>
+    </div>
+    <div class="slider-row">
+      <label>Ancho de cada rendija:</label>
+      <input type="range" id="dsWidth" min="4" max="30" value="8">
+      <span class="value" id="dsWidthVal">8</span>
+    </div>
+    <div class="slider-row">
+      <label>Longitud de onda:</label>
+      <input type="range" id="dsLambda" min="6" max="24" value="12">
+      <span class="value" id="dsLambdaVal">12</span>
+    </div>
+  </div>
+
+  <p class="caption" id="dsCaption">
+    🌊 <strong>Modo onda</strong>: los frentes de onda salen de cada rendija y se superponen.
+    Donde las crestas coinciden → franjas brillantes; donde se cancelan → franjas oscuras.
+  </p>
+</div>
+
+<!-- ============ ESPECTRO EM ============ -->
+<div class="panel" id="emPanel">
+  <h3>📻 El Espectro Electromagnético — Todo es la misma luz</h3>
+  <p class="caption" style="text-align:left;margin-bottom:.5rem;">
+    Haz clic en cada región para descubrir sus propiedades y aplicaciones.
+    <em>La única diferencia entre todas ellas es la frecuencia (y por tanto la energía).</em>
+  </p>
+  <div class="em-bar" id="emBar"></div>
+  <div class="em-info" id="emInfo">
+    <h4>👆 Selecciona una región del espectro</h4>
+    <p style="font-size:.9rem;opacity:.8;">De las ondas de radio (baja energía) a los rayos gamma (alta energía), todo es luz. Nuestros ojos solo ven una franja mínima: el visible.</p>
+  </div>
+</div>
+
+<!-- ============ LASER ============ -->
+<div class="panel" id="laserPanel">
+  <h3>🔴 El Láser — La luz domesticada</h3>
+  <p class="caption" style="text-align:left;">
+    <strong>LASER</strong> = <em>Light Amplification by Stimulated Emission of Radiation</em>.
+    Einstein predijo en 1917 la <strong>emisión estimulada</strong>: un fotón puede "clonar" a otro idéntico.
+    Décadas después, eso se convirtió en la tecnología más versátil del siglo XX.
+  </p>
+
+  <canvas id="laserCanvas" width="600" height="240" style="margin-top:1rem;"></canvas>
+  <div class="toggle-row">
+    <button class="btn active" id="btnEspont">💡 Emisión espontánea (bombilla)</button>
+    <button class="btn" id="btnEstim">🔴 Emisión estimulada (láser)</button>
+  </div>
+  <p class="caption" id="laserCaption"></p>
+
+  <div class="laser-grid">
+    <div class="laser-card">
+      <h4>⚡ ¿Cómo funciona?</h4>
+      <p>1. Bombeo de energía al medio activo.<br>2. Inversión de población.<br>3. Un fotón estimula a un átomo → emite un fotón idéntico.<br>4. Multiplicación en cascada entre dos espejos.<br>5. Uno es semi-transparente: escapa el haz.</p>
+    </div>
+    <div class="laser-card">
+      <h4>🌟 Propiedades únicas</h4>
+      <ul>
+        <li><strong>Monocromático</strong>: una sola frecuencia.</li>
+        <li><strong>Coherente</strong>: ondas en fase.</li>
+        <li><strong>Direccional</strong>: haz casi paralelo.</li>
+        <li><strong>Alta intensidad</strong>: energía concentrada.</li>
+      </ul>
+    </div>
+    <div class="laser-card">
+      <h4>💊 Medicina</h4>
+      <p>Cirugía ocular (LASIK), dermatología, odontología, endoscopía, ablación de tumores.</p>
+    </div>
+    <div class="laser-card">
+      <h4>📡 Comunicaciones</h4>
+      <p>Fibra óptica, lectores de CD/DVD/Blu-ray, impresoras, código de barras, LiDAR en autos autónomos.</p>
+    </div>
+    <div class="laser-card">
+      <h4>🏭 Industria</h4>
+      <p>Corte y soldadura de precisión, grabado, impresión 3D, medición topográfica.</p>
+    </div>
+    <div class="laser-card">
+      <h4>🔬 Ciencia</h4>
+      <p>Fusión nuclear (NIF), enfriamiento de átomos (Nobel 1997), pinzas ópticas (Nobel 2018), LIGO, comunicación cuántica.</p>
+    </div>
+  </div>
+</div>
+
+<!-- ============ MODAL ============ -->
+<div class="modal-bg" id="modalBg">
+  <div class="modal">
+    <button class="close" id="modalClose">✕</button>
+    <h2 id="modalTitle"></h2>
+    <p id="modalText"></p>
+  </div>
+</div>
+
+<footer>
+  <div style="font-size:.9rem;font-weight:700;letter-spacing:3px;color:var(--accent);margin-bottom:.5rem;">
+    UNC- FCEFyN - DEPARTAMENTO DE FÍSICA - PROMEF - 2026
+  </div>
+  <div style="font-size:.88rem;opacity:.9;margin-bottom:.8rem;">
+    Gustavo Lazarte, Alejandra Lucia Pérez Lucero, Vicente Capuano
+  </div>
+  <div style="font-size:.75rem;opacity:.55;">
+    Material didáctico interactivo · De Alhacén (s. XI) al Nobel de Física 2022.
+  </div>
+</footer>
+
+<script>
+/* ============================================================
+   DATOS — LÍNEA DE TIEMPO
+   ============================================================ */
+const events = [
+  { year:"s. XI", short:"1021", title:"Alhacén corrige el rumbo", type:"wave",
+    desc:"Ibn al-Haytham refuta la emisión visual: la luz entra en los ojos tras reflejarse en los objetos. Aplica matemáticas a la reflexión y refracción.",
+    debate:"¿Por qué crees que la idea de 'rayos que salen de los ojos' era tan intuitiva?" },
+  { year:"1672", short:"1672", title:"Newton y los corpúsculos", type:"particle",
+    desc:"Newton propone que la luz son pequeñas partículas en línea recta. Su autoridad la hace dominar durante más de un siglo.",
+    debate:"¿Qué ventajas explicativas tenía la teoría corpuscular?" },
+  { year:"1678", short:"1678", title:"Huygens y las ondas", type:"wave",
+    desc:"Huygens formula la teoría ondulatoria: la luz es una onda que se propaga por el éter. Explica reflexión y refracción, pero queda eclipsada.",
+    debate:"¿Por qué la teoría ondulatoria tardó un siglo en aceptarse?" },
+  { year:"1676", short:"1676", title:"Roemer doma la velocidad", type:"wave",
+    desc:"Ole Roemer deduce a partir de los eclipses de Ío que la luz NO es instantánea. Primera determinación científica de su velocidad.",
+    debate:"¿Qué consecuencias filosóficas tiene que la luz tenga velocidad finita?" },
+  { year:"1801", short:"1801", title:"Young y la doble rendija", type:"wave",
+    desc:"Thomas Young demuestra la naturaleza ondulatoria con interferencia en su famoso experimento de doble rendija.",
+    debate:"¿Por qué se le llama 'el experimento más bello de la física'?" },
+  { year:"1865", short:"1865", title:"Maxwell unifica", type:"wave",
+    desc:"Maxwell demuestra teóricamente que la luz es una onda electromagnética que viaja a la velocidad de la luz.",
+    debate:"¿Qué otras unificaciones busca la física hoy?" },
+  { year:"1887", short:"1887", title:"Hertz y el efecto fotoeléctrico", type:"quantum",
+    desc:"Hertz descubre que la luz UV arranca electrones de un metal: un fenómeno que la teoría ondulatoria clásica NO explica.",
+    debate:"¿Por qué este experimento fue una grieta en la física clásica?" },
+  { year:"1900", short:"1900", title:"Planck y el cuanto", type:"quantum",
+    desc:"Para resolver la 'catástrofe ultravioleta', Planck introduce que la energía se emite y absorbe en cuantos discretos.",
+    debate:"Planck llamó a su idea 'un acto de desesperación'. ¿Por qué nacen así las revoluciones?" },
+  { year:"1905", short:"1905", title:"Einstein y el fotón", type:"quantum",
+    desc:"Einstein propone que la luz MISMA está formada por cuantos (fotones) para explicar el efecto fotoeléctrico. Nobel en 1921.",
+    debate:"Recibió el Nobel por esto, no por la relatividad. ¿Por qué?" },
+  { year:"1917", short:"1917", title:"⚡ Emisión estimulada (Einstein)", type:"quantum",
+    desc:"Einstein predice teóricamente la emisión estimulada: un fotón puede estimular a un átomo excitado a emitir un fotón idéntico. Semilla conceptual del láser.",
+    debate:"¿Por qué una predicción puramente teórica puede tardar 43 años en hacerse realidad?" },
+  { year:"1923", short:"1923", title:"Compton confirma el fotón", type:"particle",
+    desc:"Compton dispersa rayos X sobre electrones y observa colisiones entre partículas, confirmando la realidad física del fotón.",
+    debate:"¿Qué diferencia hay entre 'confirmar' y 'demostrar' una teoría?" },
+  { year:"1924", short:"1924", title:"De Broglie extiende el enigma", type:"quantum",
+    desc:"Louis de Broglie propone que la dualidad onda-partícula también aplica a la materia (electrones).",
+    debate:"Si los electrones son ondas... ¿lo somos nosotros también?" },
+  { year:"1927", short:"1927", title:"Dirac y la QED", type:"quantum",
+    desc:"Dirac integra coherentemente onda y partícula cuantizando el campo electromagnético. Nace la electrodinámica cuántica.",
+    debate:"¿La QED responde 'qué es' la luz, o solo 'cómo se comporta'?" },
+  { year:"1954", short:"1954", title:"El máser de Townes", type:"quantum",
+    desc:"Charles Townes y colaboradores construyen el primer máser: emisión estimulada aplicada a microondas. Antecedente directo del láser.",
+    debate:"¿Por qué fue más fácil primero con microondas que con luz visible?" },
+  { year:"1960", short:"1960", title:"🔴 Primer LASER (Maiman)", type:"particle",
+    desc:"Theodore Maiman construye el primer láser funcional usando un cristal de rubí sintético. Emite un pulso rojo coherente. La luz queda domesticada.",
+    debate:"Al principio se llamó 'solución buscando problema'. ¿Cómo cambió eso?" },
+  { year:"1962", short:"1962", title:"Primer LED visible", type:"particle",
+    desc:"Nick Holonyak Jr. desarrolla el primer LED visible (rojo). Décadas después, el LED revolucionaría la iluminación.",
+    debate:"¿Por qué el LED tardó 50 años en llegar a los hogares?" },
+  { year:"1966", short:"1966", title:"Fibra óptica + láser", type:"wave",
+    desc:"Charles Kao demuestra que la fibra óptica puede transmitir luz láser a largas distancias. Nace la columna vertebral de Internet.",
+    debate:"¿Qué habría sido de Internet sin la fibra óptica y el láser?" },
+  { year:"1993", short:"1993", title:"LED azul (Nakamura)", type:"quantum",
+    desc:"Shuji Nakamura desarrolla el LED azul de alta potencia. Combinado con fósforo, permite el LED blanco. Nobel 2014.",
+    debate:"Un solo color faltante (azul) bloqueó 30 años de innovación. ¿Por qué?" },
+  { year:"1995", short:"1995", title:"Condensado de Bose-Einstein", type:"quantum",
+    desc:"Se logra el 5º estado de la materia enfriando átomos con láser. La luz se convierte en herramienta para manipular la materia cuántica. Nobel 2001.",
+    debate:"¿Cómo puede la luz 'enfriar' algo, si normalmente calienta?" },
+  { year:"2015", short:"2015", title:"LIGO detecta ondas gravitacionales", type:"wave",
+    desc:"Interferómetros láser de 4 km detectan ondas gravitacionales de dos agujeros negros fusionándose. La luz mide el espacio-tiempo mismo. Nobel 2017.",
+    debate:"¿Qué nos dice esto sobre la relación entre luz y gravedad?" },
+  { year:"2022", short:"2022", title:"Nobel: entrelazamiento cuántico", type:"quantum",
+    desc:"Aspect, Clauser y Zeilinger reciben el Nobel por demostrar el entrelazamiento fotónico y violar las desigualdades de Bell. Nace la era de la información cuántica.",
+    debate:"Einstein llamó al entrelazamiento 'acción fantasmal a distancia'. ¿Tenía razón?" },
+  { year:"HOY", short:"HOY", title:"Luz en la frontera", type:"quantum",
+    desc:"Computación cuántica con fotones, relojes ópticos con precisión de 1 segundo en la edad del universo, comunicación cuántica por satélite (Micius), imágenes sin luz (ghost imaging).",
+    debate:"¿Qué nueva cara de la luz nos espera en el siglo XXI?" }
+];
+
+/* ============================================================
+   RENDER TIMELINE
+   ============================================================ */
+const timeline = document.getElementById('timeline');
+events.forEach((ev, i) => {
+  const div = document.createElement('div');
+  div.className = 'event';
+  div.style.animationDelay = (i * 0.04) + 's';
+  div.innerHTML = `
+    <div class="node ${ev.type}" data-idx="${i}">${ev.short}</div>
+    <div class="card" data-idx="${i}">
+      <div class="year">${ev.year}</div>
+      <div class="title">${ev.title}</div>
+      <div class="desc">${ev.desc}</div>
+      <div class="debate" id="debate-${i}"><strong>💬 Para debatir:</strong> ${ev.debate}</div>
+    </div>`;
+  timeline.appendChild(div);
+});
+
+document.querySelectorAll('.node, .card').forEach(el => {
+  el.addEventListener('click', () => {
+    const idx = +el.dataset.idx;
+    const ev = events[idx];
+    document.getElementById('modalTitle').textContent = `${ev.year} — ${ev.title}`;
+    document.getElementById('modalText').textContent = ev.desc + ' ' + ev.debate;
+    document.getElementById('modalBg').classList.add('show');
+  });
+});
+
+document.getElementById('modalClose').onclick = () => document.getElementById('modalBg').classList.remove('show');
+document.getElementById('modalBg').addEventListener('click', e => {
+  if (e.target.id === 'modalBg') e.currentTarget.classList.remove('show');
+});
+
+/* ============================================================
+   DEBATES
+   ============================================================ */
+let debatesVisible = false;
+document.getElementById('btnAll').onclick = (e) => {
+  debatesVisible = !debatesVisible;
+  document.querySelectorAll('.debate').forEach(d => d.classList.toggle('show', debatesVisible));
+  e.target.textContent = debatesVisible ? '📖 Ocultar debates' : '📖 Debates';
+  e.target.classList.toggle('active', debatesVisible);
+};
+
+/* ============================================================
+   TEMA
+   ============================================================ */
+document.getElementById('btnTheme').onclick = () => document.body.classList.toggle('light');
+
+/* ============================================================
+   PANELES
+   ============================================================ */
+const panels = {
+  timeline: document.getElementById('timelinePanel'),
+  quiz:     document.getElementById('quizBox'),
+  ds:       document.getElementById('dsPanel'),
+  em:       document.getElementById('emPanel'),
+  laser:    document.getElementById('laserPanel')
+};
+const buttons = {
+  timeline: document.getElementById('btnTimeline'),
+  quiz:     document.getElementById('btnQuiz'),
+  ds:       document.getElementById('btnDS'),
+  em:       document.getElementById('btnEM'),
+  laser:    document.getElementById('btnLaser')
+};
+
+function togglePanel(key) {
+  const wasOpen = panels[key].classList.contains('show');
+  Object.keys(panels).forEach(k => {
+    panels[k].classList.remove('show');
+    buttons[k].classList.remove('active');
+  });
+  if (!wasOpen) {
+    panels[key].classList.add('show');
+    buttons[key].classList.add('active');
+    setTimeout(() => panels[key].scrollIntoView({ behavior:'smooth', block:'start' }), 80);
+    if (key === 'quiz') renderQuiz();
+    if (key === 'laser') { laserMode = 'espont'; updateLaserUI(); }
+    if (key === 'ds') dsReset();
+  } else {
+    panels.timeline.classList.add('show');
+    buttons.timeline.classList.add('active');
+  }
+}
+
+buttons.timeline.onclick = () => togglePanel('timeline');
+buttons.quiz.onclick = () => togglePanel('quiz');
+buttons.ds.onclick = () => togglePanel('ds');
+buttons.em.onclick = () => togglePanel('em');
+buttons.laser.onclick = () => togglePanel('laser');
+
+/* ============================================================
+   QUIZ
+   ============================================================ */
+const quizData = [
+  { q:"¿Quién refutó que los ojos emiten rayos para ver?", opts:["Newton","Alhacén","Huygens","Maxwell"], correct:1,
+    fb:"Alhacén (s. XI) estableció que la luz entra en los ojos tras reflejarse en los objetos." },
+  { q:"¿Qué experimento demostró la naturaleza ondulatoria?", opts:["Efecto fotoeléctrico","Doble rendija de Young","Cuerpo negro","Dispersión de Compton"], correct:1,
+    fb:"Young demostró la interferencia con su doble rendija en 1801." },
+  { q:"¿Quién introdujo el 'cuanto' de energía?", opts:["Einstein","Planck","Bohr","Dirac"], correct:1,
+    fb:"Planck lo propuso en 1900 para resolver la catástrofe ultravioleta." },
+  { q:"¿Qué fenómeno obligó a recuperar la idea de partícula?", opts:["Refracción","Interferencia","Efecto fotoeléctrico","Difracción"], correct:2,
+    fb:"El efecto fotoeléctrico no podía explicarse con ondas clásicas." },
+  { q:"¿Quién extendió la dualidad a la materia?", opts:["De Broglie","Compton","Maxwell","Hertz"], correct:0,
+    fb:"De Broglie propuso en 1924 que electrones y otras partículas también son ondas." },
+  { q:"¿Qué predijo Einstein en 1917, base del láser?", opts:["Relatividad","Emisión estimulada","Fotón","Entrelazamiento"], correct:1,
+    fb:"La emisión estimulada: un fotón estimula a un átomo a emitir otro fotón idéntico." },
+  { q:"¿Quién construyó el primer láser funcional en 1960?", opts:["Townes","Maiman","Schawlow","Nakamura"], correct:1,
+    fb:"Theodore Maiman usó un cristal de rubí sintético." },
+  { q:"¿Quién desarrolló el LED azul, clave para el LED blanco?", opts:["Holonyak","Nakamura","Kao","Maiman"], correct:1,
+    fb:"Shuji Nakamura en 1993. Nobel 2014." }
+];
+
+let qIndex = 0;
+let qState = new Array(quizData.length).fill(null);
+
+const quizQ = document.getElementById('quizQ');
+const quizOpts = document.getElementById('quizOpts');
+const quizFb = document.getElementById('quizFb');
+const quizProgress = document.getElementById('quizProgress');
+const quizNav = document.getElementById('quizNav');
+const quizBarFill = document.getElementById('quizBarFill');
+const btnPrev = document.getElementById('quizPrev');
+const btnNext = document.getElementById('quizNext');
+
+function renderQuizNav() {
+  quizNav.innerHTML = '';
+  quizData.forEach((_, i) => {
+    const b = document.createElement('button');
+    b.className = 'quiz-dot';
+    if (i === qIndex) b.classList.add('current');
+    if (qState[i] === true) b.classList.add('correct');
+    if (qState[i] === false) b.classList.add('wrong');
+    b.textContent = i + 1;
+    b.onclick = () => { qIndex = i; renderQuiz(); };
+    quizNav.appendChild(b);
+  });
+}
+
+function renderQuiz() {
+  if (qIndex >= quizData.length) {
+    const aciertos = qState.filter(s => s === true).length;
+    quizQ.textContent = `🎉 ¡Completaste el quiz! Acertaste ${aciertos} de ${quizData.length}.`;
+    quizOpts.innerHTML = `<button class="btn" onclick="restartQuiz()">🔄 Reiniciar todo</button>`;
+    quizFb.textContent = "";
+    quizProgress.textContent = `Resultado final: ${aciertos}/${quizData.length}`;
+    quizBarFill.style.width = (aciertos / quizData.length * 100) + '%';
+    quizNav.innerHTML = '';
+    btnPrev.disabled = false;
+    btnNext.disabled = true;
+    return;
+  }
+  const q = quizData[qIndex];
+  const answered = qState[qIndex] !== null;
+  quizProgress.textContent = `Pregunta ${qIndex + 1} de ${quizData.length}`;
+  const aciertos = qState.filter(s => s === true).length;
+  quizBarFill.style.width = (aciertos / quizData.length * 100) + '%';
+  quizQ.textContent = q.q;
+  quizFb.textContent = "";
+  quizOpts.innerHTML = '';
+
+  q.opts.forEach((opt, i) => {
+    const b = document.createElement('button');
+    b.className = 'quiz-opt';
+    b.textContent = opt;
+    if (answered && i === q.correct) b.classList.add('correct');
+    b.onclick = () => {
+      if (qState[qIndex] !== null) return;
+      qState[qIndex] = (i === q.correct);
+      if (i === q.correct) {
+        b.classList.add('correct');
+        quizFb.style.color = '#50dc78';
+        quizFb.textContent = '✅ ¡Correcto! ' + q.fb;
+      } else {
+        b.classList.add('wrong');
+        quizOpts.children[q.correct].classList.add('correct');
+        quizFb.style.color = '#ff7070';
+        quizFb.textContent = '❌ ' + q.fb;
+      }
+      renderQuizNav();
+      const a = qState.filter(s => s === true).length;
+      quizBarFill.style.width = (a / quizData.length * 100) + '%';
+    };
+    quizOpts.appendChild(b);
+  });
+
+  if (answered) {
+    quizFb.style.color = qState[qIndex] ? '#50dc78' : '#ff7070';
+    quizFb.textContent = (qState[qIndex] ? '✅ ' : '❌ ') + q.fb;
+  }
+  renderQuizNav();
+  btnPrev.disabled = (qIndex === 0);
+  btnNext.disabled = (qIndex === quizData.length - 1);
+}
+
+btnPrev.onclick = () => { if (qIndex > 0) { qIndex--; renderQuiz(); } };
+btnNext.onclick = () => { if (qIndex < quizData.length - 1) { qIndex++; renderQuiz(); } };
+
+window.restartQuiz = () => {
+  qIndex = 0;
+  qState = new Array(quizData.length).fill(null);
+  renderQuiz();
+};
+
+function shuffleArray(a) {
+  for (let i = a.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [a[i], a[j]] = [a[j], a[i]];
+  }
+  return a;
+}
+
+document.getElementById('quizShuffle').onclick = () => {
+  shuffleArray(quizData);
+  quizData.forEach(q => {
+    const correctText = q.opts[q.correct];
+    shuffleArray(q.opts);
+    q.correct = q.opts.indexOf(correctText);
+  });
+  qIndex = 0;
+  qState = new Array(quizData.length).fill(null);
+  renderQuiz();
+};
+
+renderQuiz();
+
+/* ============================================================
+   DOBLE RENDIJA
+   ============================================================ */
+const dsCanvas = document.getElementById('dsCanvas');
+const dsCtx = dsCanvas.getContext('2d');
+
+const dsConfig = { slits: 2, sep: 60, width: 8, lambda: 12, mode: 'wave' };
+
+const DS = {
+  sourceX: 40, sourceY: 150,
+  barrierX: 340, screenX: 640,
+  topY: 40, bottomY: 260, centerY: 150
+};
+
+const fieldCanvas = document.createElement('canvas');
+fieldCanvas.width = 150;
+fieldCanvas.height = 110;
+const fieldCtx = fieldCanvas.getContext('2d');
+
+let dsTime = 0;
+let dsParticles = [];
+let dsHits = new Array(220).fill(0);
+let dsAnimId = null;
+
+function getSlits() {
+  const slits = [];
+  if (dsConfig.slits === 1) {
+    slits.push(DS.centerY);
+  } else {
+    slits.push(DS.centerY - dsConfig.sep / 2);
+    slits.push(DS.centerY + dsConfig.sep / 2);
+  }
+  return slits;
+}
+
+function computeIntensity(yOffset) {
+  const D = DS.screenX - DS.barrierX;
+  const sinTheta = yOffset / Math.sqrt(yOffset * yOffset + D * D);
+  const a = dsConfig.width;
+  const d = dsConfig.sep;
+  const lam = dsConfig.lambda;
+  const beta = Math.PI * a * sinTheta / lam;
+  const alpha = Math.PI * d * sinTheta / lam;
+  const sincBeta = beta === 0 ? 1 : Math.sin(beta) / beta;
+  const singleSlit = sincBeta * sincBeta;
+  let pattern;
+  if (dsConfig.slits === 1) pattern = singleSlit;
+  else pattern = singleSlit * Math.cos(alpha) * Math.cos(alpha);
+  return Math.max(0, pattern);
+}
+
+function sampleScreenPosition() {
+  const maxY = 110;
+  for (let i = 0; i < 60; i++) {
+    const y = (Math.random() - 0.5) * 2 * maxY;
+    const intensity = computeIntensity(y);
+    if (Math.random() < intensity) return y;
+  }
+  return 0;
+}
+
+function drawWaveField() {
+  const w = fieldCanvas.width, h = fieldCanvas.height;
+  const img = fieldCtx.createImageData(w, h);
+  const data = img.data;
+  const slits = getSlits();
+  const lam = dsConfig.lambda;
+  const phaseOffset = dsTime * 0.35;
+
+  for (let py = 0; py < h; py++) {
+    for (let px = 0; px < w; px++) {
+      const x = DS.barrierX + px * 2;
+      const y = DS.topY + py * 2;
+      let sc = 0, ss = 0;
+      for (const slitY of slits) {
+        const dx = x - DS.barrierX;
+        const dy = y - slitY;
+        const r = Math.sqrt(dx*dx + dy*dy) + 6;
+        const phase = 2 * Math.PI * r / lam - phaseOffset;
+        const amp = 30 / Math.sqrt(r);
+        sc += amp * Math.cos(phase);
+        ss += amp * Math.sin(phase);
+      }
+      const amp2 = Math.sqrt(sc*sc + ss*ss) / slits.length;
+      const intensity = Math.min(1, amp2 * amp2 * 0.35);
+      const idx = (py * w + px) * 4;
+      const c = Math.floor(intensity * 255);
+      data[idx] = c * 0.45;
+      data[idx+1] = c * 0.7;
+      data[idx+2] = Math.min(255, 80 + c);
+      data[idx+3] = 255;
+    }
+  }
+  fieldCtx.putImageData(img, 0, 0);
+  dsCtx.imageSmoothingEnabled = true;
+  dsCtx.drawImage(fieldCanvas, 0, 0, w, h, DS.barrierX, DS.topY, DS.screenX - DS.barrierX, DS.bottomY - DS.topY);
+}
+
+function drawBarrier(slits) {
+  dsCtx.fillStyle = '#8899bb';
+  let cursor = DS.topY;
+  for (const sy of slits) {
+    const st = sy - dsConfig.width / 2;
+    const sb = sy + dsConfig.width / 2;
+    if (st > cursor) dsCtx.fillRect(DS.barrierX - 5, cursor, 10, st - cursor);
+    cursor = sb;
+  }
+  if (cursor < DS.bottomY) dsCtx.fillRect(DS.barrierX - 5, cursor, 10, DS.bottomY - cursor);
+}
+
+function drawSource() {
+  dsCtx.fillStyle = '#ffd54a';
+  dsCtx.shadowColor = '#ffd54a';
+  dsCtx.shadowBlur = 20;
+  dsCtx.beginPath();
+  dsCtx.arc(DS.sourceX, DS.sourceY, 8, 0, Math.PI * 2);
+  dsCtx.fill();
+  dsCtx.shadowBlur = 0;
+}
+
+function drawScreenAndPattern() {
+  dsCtx.strokeStyle = 'rgba(200,220,255,.7)';
+  dsCtx.lineWidth = 2;
+  dsCtx.beginPath();
+  dsCtx.moveTo(DS.screenX, DS.topY);
+  dsCtx.lineTo(DS.screenX, DS.bottomY);
+  dsCtx.stroke();
+
+  const h = DS.bottomY - DS.topY;
+  for (let py = 0; py < h; py++) {
+    const yAbs = DS.topY + py;
+    const yOff = yAbs - DS.centerY;
+    const I = computeIntensity(yOff);
+    const c = Math.floor(I * 255);
+    dsCtx.fillStyle = `rgb(${c}, ${Math.min(255, c*0.9+20)}, ${Math.min(255, 100 + c)})`;
+    dsCtx.fillRect(DS.screenX + 2, yAbs, 8, 1);
+  }
+
+  const graphX = DS.screenX + 20;
+  const graphW = 55;
+  dsCtx.strokeStyle = 'rgba(255,213,74,.3)';
+  dsCtx.lineWidth = 1;
+  dsCtx.beginPath();
+  dsCtx.moveTo(graphX, DS.topY);
+  dsCtx.lineTo(graphX, DS.bottomY);
+  dsCtx.stroke();
+
+  dsCtx.fillStyle = 'rgba(255,213,74,.85)';
+  for (let py = 0; py < h; py++) {
+    const yAbs = DS.topY + py;
+    const yOff = yAbs - DS.centerY;
+    const I = computeIntensity(yOff);
+    const barW = I * graphW;
+    dsCtx.fillRect(graphX, yAbs, barW, 1);
+  }
+
+  if (dsConfig.mode === 'part') {
+    const maxCount = Math.max(...dsHits, 1);
+    dsCtx.fillStyle = 'rgba(255,122,74,.75)';
+    for (let i = 0; i < dsHits.length; i++) {
+      if (dsHits[i] === 0) continue;
+      const yAbs = DS.topY + i;
+      const barW = (dsHits[i] / maxCount) * graphW;
+      dsCtx.fillRect(graphX, yAbs, barW, 1);
+    }
+  }
+}
+
+function drawGeometryLabels() {
+  dsCtx.fillStyle = 'rgba(200,200,220,.7)';
+  dsCtx.font = '11px Segoe UI';
+  dsCtx.fillText('Fuente', DS.sourceX - 18, DS.sourceY + 26);
+  dsCtx.fillText('Rendijas', DS.barrierX - 25, DS.topY - 8);
+  dsCtx.fillText('Pantalla', DS.screenX - 20, DS.topY - 8);
+  dsCtx.fillText('Intensidad', DS.screenX + 20, DS.topY - 8);
+}
+
+function drawParticles() {
+  if (dsConfig.mode === 'part' && Math.random() < 0.4) {
+    const slits = getSlits();
+    const slitY = slits[Math.floor(Math.random() * slits.length)];
+    const yOff = sampleScreenPosition();
+    dsParticles.push({
+      x: DS.sourceX, y: DS.sourceY,
+      slitY: slitY,
+      targetY: DS.centerY + yOff,
+      phase: 0,
+      speed: 4 + Math.random() * 2
+    });
+  }
+
+  dsParticles.forEach(p => {
+    if (p.phase === 0) {
+      const dx = DS.barrierX - p.x;
+      const dy = p.slitY - p.y;
+      const d = Math.sqrt(dx*dx + dy*dy);
+      if (d < p.speed) { p.x = DS.barrierX; p.y = p.slitY; p.phase = 1; }
+      else { p.x += dx/d * p.speed; p.y += dy/d * p.speed; }
+    } else {
+      const dx = DS.screenX - p.x;
+      const dy = p.targetY - p.y;
+      const d = Math.sqrt(dx*dx + dy*dy);
+      if (d < p.speed) {
+        p.done = true;
+        const idx = Math.floor(p.targetY - DS.topY);
+        if (idx >= 0 && idx < dsHits.length) dsHits[idx]++;
+      } else {
+        p.x += dx/d * p.speed;
+        p.y += dy/d * p.speed;
+      }
+    }
+  });
+
+  dsParticles = dsParticles.filter(p => !p.done);
+
+  dsCtx.fillStyle = '#ff7a4a';
+  dsCtx.shadowColor = '#ff7a4a';
+  dsCtx.shadowBlur = 10;
+  dsParticles.forEach(p => {
+    dsCtx.beginPath();
+    dsCtx.arc(p.x, p.y, 3.5, 0, Math.PI * 2);
+    dsCtx.fill();
+  });
+  dsCtx.shadowBlur = 0;
+}
+
+function drawDoubleSlit() {
+  const w = dsCanvas.width, h = dsCanvas.height;
+  dsCtx.fillStyle = 'rgba(10,10,26,0.6)';
+  dsCtx.fillRect(0, 0, w, h);
+  if (document.body.classList.contains('light')) {
+    dsCtx.fillStyle = 'rgba(245,245,250,0.8)';
+    dsCtx.fillRect(0, 0, w, h);
+  }
+
+  const slits = getSlits();
+
+  if (dsConfig.mode === 'wave') drawWaveField();
+  drawSource();
+  drawBarrier(slits);
+  drawScreenAndPattern();
+  if (dsConfig.mode === 'part') drawParticles();
+  drawGeometryLabels();
+
+  dsTime++;
+  dsAnimId = requestAnimationFrame(drawDoubleSlit);
+}
+
+function dsReset() {
+  dsParticles = [];
+  dsHits = new Array(220).fill(0);
+  dsTime = 0;
+  if (dsAnimId) cancelAnimationFrame(dsAnimId);
+  dsAnimId = requestAnimationFrame(drawDoubleSlit);
+}
+
+document.getElementById('dsWaveBtn').onclick = () => {
+  dsConfig.mode = 'wave';
+  document.getElementById('dsWaveBtn').classList.add('active');
+  document.getElementById('dsPartBtn').classList.remove('active');
+  document.getElementById('dsCaption').innerHTML = '🌊 <strong>Modo onda</strong>: los frentes de onda salen de cada rendija y se superponen. Donde las crestas coinciden → franjas brillantes; donde se cancelan → franjas oscuras.';
+};
+document.getElementById('dsPartBtn').onclick = () => {
+  dsConfig.mode = 'part';
+  document.getElementById('dsPartBtn').classList.add('active');
+  document.getElementById('dsWaveBtn').classList.remove('active');
+  document.getElementById('dsCaption').innerHTML = '⚛️ <strong>Modo partícula</strong>: cada punto naranja es un fotón o electrón individual. Al acumularse miles, emerge el mismo patrón de interferencia. ¡Esto es lo asombroso de la mecánica cuántica!';
+  dsHits = new Array(220).fill(0);
+  dsParticles = [];
+};
+document.getElementById('dsReset').onclick = () => { dsHits = new Array(220).fill(0); dsParticles = []; };
+
+document.getElementById('dsSlits').onchange = (e) => { dsConfig.slits = +e.target.value; dsHits = new Array(220).fill(0); };
+document.getElementById('dsSep').oninput = (e) => { dsConfig.sep = +e.target.value; document.getElementById('dsSepVal').textContent = e.target.value; };
+document.getElementById('dsWidth').oninput = (e) => { dsConfig.width = +e.target.value; document.getElementById('dsWidthVal').textContent = e.target.value; };
+document.getElementById('dsLambda').oninput = (e) => { dsConfig.lambda = +e.target.value; document.getElementById('dsLambdaVal').textContent = e.target.value; };
+
+/* ============================================================
+   ESPECTRO EM
+   ============================================================ */
+const emRegions = [
+  { name:"Ondas de Radio", color:"#3a1a5c", wl:"1 mm – 100 km", freq:"3 kHz – 300 GHz", energy:"~10⁻⁹ eV",
+    apps:["Radiodifusión AM/FM","Televisión","WiFi y Bluetooth","Resonancia magnética nuclear (MRI)","Radioastronomía"],
+    sorpresa:"Las ondas de radio más largas pueden rodear la Tierra rebotando en la ionósfera. Por eso la radio AM llega más lejos de noche." },
+  { name:"Microondas", color:"#5c1a4a", wl:"1 mm – 30 cm", freq:"1 – 300 GHz", energy:"~10⁻⁵ eV",
+    apps:["Hornos microondas","Radar meteorológico","Comunicaciones satelitales","GPS","5G"],
+    sorpresa:"El fondo cósmico de microondas (CMB), la luz más antigua del universo (380.000 años tras el Big Bang), está en esta banda." },
+  { name:"Infrarrojo", color:"#8c2a1a", wl:"700 nm – 1 mm", freq:"300 GHz – 430 THz", energy:"~0.001 – 1.7 eV",
+    apps:["Visión nocturna y térmica","Mandos a distancia","Sensores de movimiento","Espectroscopía molecular","Telescopios espaciales (JWST)"],
+    sorpresa:"El telescopio James Webb observa el universo en infrarrojo porque la expansión cósmica estira la luz visible antigua hacia esta banda." },
+  { name:"Visible", color:"linear-gradient(90deg,#8b00ff,#0000ff,#00ff00,#ffff00,#ff7f00,#ff0000)", wl:"380 – 750 nm", freq:"430 – 790 THz", energy:"1.7 – 3.3 eV",
+    apps:["Visión humana","Fotosíntesis","Fotografía","Iluminación","Arte y cultura"],
+    sorpresa:"Solo vemos esta franja porque el Sol emite su máximo aquí Y porque el agua de los océanos primitivos era transparente a estas longitudes. ¡Nuestra visión está esculpida por el ambiente!" },
+  { name:"Ultravioleta", color:"#2a1a8c", wl:"10 – 400 nm", freq:"790 THz – 30 PHz", energy:"3.3 – 124 eV",
+    apps:["Esterilización","Bronceado y vitamina D","Lámparas fluorescentes","Litografía de chips","Detección de billetes falsos"],
+    sorpresa:"El UV es ionizante: puede arrancar electrones (efecto fotoeléctrico). Por eso daña el ADN y también por eso Hertz lo usó para descubrir el fotón." },
+  { name:"Rayos X", color:"#1a2a5c", wl:"0.01 – 10 nm", freq:"30 PHz – 30 EHz", energy:"124 eV – 124 keV",
+    apps:["Radiografía médica","Tomografía computada","Seguridad aeroportuaria","Cristalografía (ADN)","Astronomía de agujeros negros"],
+    sorpresa:"Rosalind Franklin usó difracción de rayos X para obtener la 'Foto 51', clave para descubrir la doble hélice del ADN en 1953." },
+  { name:"Rayos Gamma", color:"#0a0a1a", wl:"< 0.01 nm", freq:"> 30 EHz", energy:"> 124 keV",
+    apps:["Medicina nuclear (PET)","Radioterapia oncológica","Astronomía de explosiones estelares","Esterilización de alimentos","Detección de fisión nuclear"],
+    sorpresa:"Los estallidos de rayos gamma (GRB) son los eventos más luminosos del universo desde el Big Bang. En segundos liberan más energía que el Sol en toda su vida." }
+];
+
+const emBar = document.getElementById('emBar');
+const emInfo = document.getElementById('emInfo');
+emRegions.forEach((r, i) => {
+  const d = document.createElement('div');
+  d.className = 'em-region';
+  d.style.background = r.color;
+  d.textContent = r.name;
+  d.onclick = () => showEM(i);
+  emBar.appendChild(d);
+});
+
+function showEM(i) {
+  document.querySelectorAll('.em-region').forEach(el => el.classList.remove('active'));
+  document.querySelectorAll('.em-region')[i].classList.add('active');
+  const r = emRegions[i];
+  emInfo.innerHTML = `
+    <h4>${r.name}</h4>
+    <div class="metrics">
+      <span>📏 Longitud de onda: <strong>${r.wl}</strong></span>
+      <span>📡 Frecuencia: <strong>${r.freq}</strong></span>
+      <span>⚡ Energía del fotón: <strong>${r.energy}</strong></span>
+    </div>
+    <ul>${r.apps.map(a => `<li>${a}</li>`).join('')}</ul>
+    <div class="sorpresa"><strong>🤯 Dato sorprendente:</strong> ${r.sorpresa}</div>
+  `;
+}
+
+/* ============================================================
+   LASER
+   ============================================================ */
+const lc = document.getElementById('laserCanvas');
+const lctx = lc.getContext('2d');
+let laserMode = 'espont';
+let lt = 0;
+let atoms = [];
+let photons = [];
+
+function initAtoms() {
+  atoms = [];
+  for (let i = 0; i < 10; i++) {
+    atoms.push({
+      x: 80 + (i % 5) * 110,
+      y: 80 + Math.floor(i / 5) * 100,
+      excited: false,
+      timer: Math.random() * 100
+    });
+  }
+}
+initAtoms();
+
+function updateLaserUI() {
+  document.getElementById('btnEspont').classList.toggle('active', laserMode === 'espont');
+  document.getElementById('btnEstim').classList.toggle('active', laserMode === 'estim');
+  const cap = document.getElementById('laserCaption');
+  if (laserMode === 'espont') {
+    cap.innerHTML = "💡 <strong>Emisión espontánea</strong>: cada átomo excitado decae cuando quiere, emitiendo un fotón en dirección y fase aleatorias. Es la luz de una bombilla o del Sol: incoherente y en todas direcciones.";
+  } else {
+    cap.innerHTML = "🔴 <strong>Emisión estimulada</strong>: un fotón entrante obliga a un átomo excitado a emitir un fotón idéntico (misma dirección, fase y frecuencia). Se multiplican en cascada entre espejos → nace el láser.";
+  }
+  atoms.forEach(a => { a.excited = false; a.timer = Math.random() * 80; });
+  photons = [];
+}
+
+document.getElementById('btnEspont').onclick = () => { laserMode = 'espont'; updateLaserUI(); };
+document.getElementById('btnEstim').onclick = () => { laserMode = 'estim'; updateLaserUI(); };
+updateLaserUI();
+
+function drawLaser() {
+  lctx.clearRect(0, 0, lc.width, lc.height);
+  const w = lc.width, h = lc.height;
+  if (laserMode === 'estim') {
+    lctx.fillStyle = 'rgba(180,180,220,.7)';
+    lctx.fillRect(15, 30, 8, h - 60);
+    lctx.fillRect(w - 23, 30, 8, h - 60);
+    lctx.fillStyle = 'rgba(74,212,255,.9)';
+    lctx.font = '11px Segoe UI';
+    lctx.fillText('espejo', 5, 22);
+    lctx.fillText('espejo', w - 42, 22);
+  }
+  atoms.forEach(a => {
+    if (!a.excited && Math.random() < 0.02) { a.excited = true; a.timer = 60 + Math.random() * 60; }
+    if (a.excited) {
+      a.timer--;
+      if (a.timer <= 0) {
+        a.excited = false;
+        a.timer = 60 + Math.random() * 60;
+        if (laserMode === 'espont') {
+          photons.push({
+            x: a.x, y: a.y,
+            vx: (Math.random() - 0.5) * 4,
+            vy: (Math.random() - 0.5) * 4,
+            life: 80, color: '#ffd54a'
+          });
+        }
+      }
+    }
+  });
+  if (laserMode === 'estim' && photons.filter(p => p.seed).length === 0) {
+    photons.push({ x: 30, y: h/2, vx: 3, vy: 0, life: 9999, color: '#ff3333', seed: true });
+  }
+  photons.forEach(p => {
+    p.x += p.vx; p.y += p.vy; p.life--;
+    if (laserMode === 'estim') {
+      atoms.forEach(a => {
+        if (a.excited && Math.abs(a.x - p.x) < 15 && Math.abs(a.y - p.y) < 15) {
+          a.excited = false; a.timer = 60 + Math.random() * 60;
+          photons.push({ x: a.x, y: a.y, vx: p.vx, vy: p.vy, life: 200, color: '#ff3333' });
+        }
+      });
+      if (p.x > w - 25 && p.vx > 0) p.vx = -p.vx;
+      if (p.x < 25 && p.vx < 0 && !p.seed) p.vx = -p.vx;
+    }
+  });
+  photons = photons.filter(p => p.life > 0 && p.x > -20 && p.x < w + 20 && p.y > -20 && p.y < h + 20);
+  photons.forEach(p => {
+    lctx.fillStyle = p.color;
+    lctx.shadowColor = p.color; lctx.shadowBlur = 12;
+    lctx.beginPath(); lctx.arc(p.x, p.y, 4, 0, Math.PI * 2); lctx.fill();
+  });
+  lctx.shadowBlur = 0;
+  atoms.forEach(a => {
+    lctx.fillStyle = a.excited ? '#ff5555' : '#556688';
+    lctx.shadowColor = a.excited ? '#ff5555' : 'transparent';
+    lctx.shadowBlur = a.excited ? 15 : 0;
+    lctx.beginPath(); lctx.arc(a.x, a.y, 9, 0, Math.PI * 2); lctx.fill();
+    lctx.shadowBlur = 0;
+    if (a.excited) {
+      lctx.strokeStyle = '#ffaa00'; lctx.lineWidth = 2;
+      lctx.beginPath(); lctx.arc(a.x, a.y, 15, 0, Math.PI * 2); lctx.stroke();
+    }
+  });
+  lctx.fillStyle = 'rgba(200,200,220,.7)';
+  lctx.font = '11px Segoe UI';
+  lctx.fillText(laserMode === 'espont' ? 'Fotones en direcciones aleatorias' : 'Cascada coherente → HAZ LÁSER', 10, h - 10);
+  lt++;
+  requestAnimationFrame(drawLaser);
+}
+drawLaser();
+
+/* ============================================================
+   ESTRELLAS
+   ============================================================ */
+const starsEl = document.getElementById('stars');
+for (let i = 0; i < 80; i++) {
+  const s = document.createElement('div');
+  s.className = 'star';
+  s.style.left = Math.random() * 100 + '%';
+  s.style.top = Math.random() * 100 + '%';
+  s.style.animationDelay = Math.random() * 3 + 's';
+  s.style.opacity = Math.random() * 0.7 + 0.2;
+  starsEl.appendChild(s);
+}
+
+/* ============================================================
+   SHOW DE LUCES REACTIVO — AUDIO SINTETIZADO CON WEB AUDIO API
+   ============================================================ */
+const lightShow = document.getElementById('lightShow');
+const btnMusic = document.getElementById('btnMusic');
+const lsParticles = document.getElementById('lsParticles');
+let musicPlaying = false;
+
+const lsBeams = document.querySelectorAll('.ls-beam');
+const lsPulse = document.getElementById('lsPulse');
+const lsTitle1 = document.getElementById('lsTitle1');
+
+// ---- Web Audio API ----
+let audioCtx = null;
+let analyser = null;
+let masterGain = null;
+let dataArray = null;
+let rafVisualizer = null;
+let synthSchedulerId = null;
+let padNodes = null;
+
+// ---- Secuencia musical (Do mayor) ----
+const MELODY = [
+  { note: 261.63, dur: 0.5 },
+  { note: 329.63, dur: 0.5 },
+  { note: 392.00, dur: 0.5 },
+  { note: 523.25, dur: 1.0 },
+  { note: 440.00, dur: 0.5 },
+  { note: 392.00, dur: 0.5 },
+  { note: 349.23, dur: 0.5 },
+  { note: 329.63, dur: 1.0 },
+  { note: 293.66, dur: 0.5 },
+  { note: 329.63, dur: 0.5 },
+  { note: 392.00, dur: 0.5 },
+  { note: 349.23, dur: 1.0 },
+  { note: 329.63, dur: 0.5 },
+  { note: 293.66, dur: 0.5 },
+  { note: 261.63, dur: 1.5 }
+];
+const BASS = [130.81, 130.81, 174.61, 196.00];
+
+function createParticles() {
+  lsParticles.innerHTML = '';
+  for (let i = 0; i < 45; i++) {
+    const p = document.createElement('div');
+    p.className = 'ls-particle';
+    p.style.left = Math.random() * 100 + '%';
+    p.style.bottom = '-10vh';
+    p.style.animationDuration = (6 + Math.random() * 8) + 's';
+    p.style.animationDelay = (Math.random() * 6) + 's';
+    const colors = ['#ffd54a', '#4ad4ff', '#ff7a4a', '#ffffff'];
+    const c = colors[Math.floor(Math.random() * colors.length)];
+    p.style.background = c;
+    p.style.boxShadow = `0 0 12px ${c}, 0 0 24px ${c}`;
+    const size = 2 + Math.random() * 5;
+    p.style.width = size + 'px';
+    p.style.height = size + 'px';
+    lsParticles.appendChild(p);
+  }
+}
+
+function initAudio() {
+  if (audioCtx) return;
+  audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+  analyser = audioCtx.createAnalyser();
+  analyser.fftSize = 256;
+  analyser.smoothingTimeConstant = 0.75;
+  masterGain = audioCtx.createGain();
+  masterGain.gain.value = 0.22;
+  masterGain.connect(analyser);
+  analyser.connect(audioCtx.destination);
+  dataArray = new Uint8Array(analyser.frequencyBinCount);
+}
+
+function playNote(freq, when, dur, type = 'triangle', vol = 0.3) {
+  const osc = audioCtx.createOscillator();
+  const g = audioCtx.createGain();
+  osc.type = type;
+  osc.frequency.value = freq;
+  g.gain.setValueAtTime(0, when);
+  g.gain.linearRampToValueAtTime(vol, when + 0.03);
+  g.gain.exponentialRampToValueAtTime(0.001, when + dur);
+  osc.connect(g);
+  g.connect(masterGain);
+  osc.start(when);
+  osc.stop(when + dur + 0.05);
+}
+
+function startPad() {
+  const drone1 = audioCtx.createOscillator();
+  const drone2 = audioCtx.createOscillator();
+  const padGain = audioCtx.createGain();
+  drone1.type = 'sine';
+  drone2.type = 'sine';
+  drone1.frequency.value = 65.41;
+  drone2.frequency.value = 98.00;
+  padGain.gain.value = 0.06;
+  const lfo = audioCtx.createOscillator();
+  const lfoGain = audioCtx.createGain();
+  lfo.frequency.value = 0.15;
+  lfoGain.gain.value = 0.03;
+  lfo.connect(lfoGain);
+  lfoGain.connect(padGain.gain);
+  drone1.connect(padGain);
+  drone2.connect(padGain);
+  padGain.connect(masterGain);
+  drone1.start();
+  drone2.start();
+  lfo.start();
+  return { drone1, drone2, lfo, padGain };
+}
+
+function scheduleMelody() {
+  if (!audioCtx || !musicPlaying) return;
+  const start = audioCtx.currentTime + 0.1;
+  let t = start;
+
+  MELODY.forEach(n => {
+    playNote(n.note, t, n.dur * 0.95, 'triangle', 0.28);
+    playNote(n.note * 1.5, t, n.dur * 0.9, 'sine', 0.12);
+    t += n.dur;
+  });
+
+  BASS.forEach((f, i) => {
+    playNote(f, start + i * 1.5, 1.4, 'sawtooth', 0.15);
+  });
+
+  const total = MELODY.reduce((acc, n) => acc + n.dur, 0);
+  synthSchedulerId = setTimeout(() => {
+    if (musicPlaying) scheduleMelody();
+  }, total * 1000 - 100);
+}
+
+function updateVisualsWithAudio() {
+  if (!analyser || !dataArray) {
+    rafVisualizer = requestAnimationFrame(updateVisualsWithAudio);
+    return;
+  }
+  analyser.getByteFrequencyData(dataArray);
+
+  const bass = (dataArray[1]+dataArray[2]+dataArray[3]+dataArray[4]) / 4 / 255;
+  const mid  = (dataArray[10]+dataArray[12]+dataArray[14]+dataArray[16]) / 4 / 255;
+  const treb = (dataArray[30]+dataArray[35]+dataArray[40]+dataArray[45]) / 4 / 255;
+  const overall = (bass + mid + treb) / 3;
+
+  lsBeams.forEach((beam) => {
+    const factor = 0.6 + overall * 1.6;
+    const rotateSpeed = 0.4 + bass * 2.2;
+    beam.style.opacity = 0.35 + overall * 0.6;
+    beam.style.transform = `translate(-50%, -50%) rotate(${performance.now() * 0.02 * rotateSpeed}deg) scaleY(${factor})`;
+  });
+
+  const pulseScale = 0.7 + bass * 1.4;
+  lsPulse.style.transform = `translate(-50%, -50%) scale(${pulseScale})`;
+  lsPulse.style.opacity = 0.45 + bass * 0.55;
+
+  const particles = document.querySelectorAll('.ls-particle');
+  particles.forEach((p, i) => {
+    const offset = (i % 5) * 0.08;
+    p.style.transform = `scale(${0.8 + treb * 1.8 + offset})`;
+  });
+
+  lsTitle1.style.transform = `scale(${1 + bass * 0.12 + mid * 0.06})`;
+
+  rafVisualizer = requestAnimationFrame(updateVisualsWithAudio);
+}
+
+function startExperience() {
+  if (musicPlaying) { stopExperience(); return; }
+  musicPlaying = true;
+  btnMusic.classList.add('active');
+  btnMusic.textContent = '⏹️ Detener música';
+  lightShow.classList.add('active');
+  createParticles();
+
+  initAudio();
+  if (audioCtx.state === 'suspended') audioCtx.resume();
+
+  if (!padNodes) padNodes = startPad();
+  scheduleMelody();
+
+  if (rafVisualizer) cancelAnimationFrame(rafVisualizer);
+  rafVisualizer = requestAnimationFrame(updateVisualsWithAudio);
+}
+
+function stopExperience() {
+  if (!musicPlaying) return;
+  musicPlaying = false;
+  btnMusic.classList.remove('active');
+  btnMusic.textContent = '🎵 Iniciar experiencia';
+  lightShow.classList.remove('active');
+
+  if (synthSchedulerId) { clearTimeout(synthSchedulerId); synthSchedulerId = null; }
+
+  if (padNodes) {
+    try {
+      padNodes.drone1.stop();
+      padNodes.drone2.stop();
+      padNodes.lfo.stop();
+    } catch(e) {}
+    padNodes = null;
+  }
+
+  if (rafVisualizer) { cancelAnimationFrame(rafVisualizer); rafVisualizer = null; }
+
+  lsBeams.forEach(beam => { beam.style.transform = ''; beam.style.opacity = ''; });
+  lsPulse.style.transform = '';
+  lsPulse.style.opacity = '';
+  lsTitle1.style.transform = '';
+
+  setTimeout(() => { lsParticles.innerHTML = ''; }, 1200);
+}
+
+btnMusic.onclick = startExperience;
+
+// Detener el show al pulsar cualquier otro botón
+['btnTimeline','btnQuiz','btnDS','btnEM','btnLaser','btnAll','btnTheme'].forEach(id => {
+  const el = document.getElementById(id);
+  if (el) el.addEventListener('click', () => { if (musicPlaying) stopExperience(); });
+});
+
+// Escape detiene todo
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape') {
+    document.getElementById('modalBg').classList.remove('show');
+    if (musicPlaying) stopExperience();
+  }
+});
+</script>
+</body>
+</html>

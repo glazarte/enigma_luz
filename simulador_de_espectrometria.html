@@ -1,0 +1,761 @@
+<!DOCTYPE html>
+<html lang="es" class="h-full">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Simulador de Espectrometría Óptica (Goniómetro) - PROMEF 2026 </title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    fontFamily: { sans: ['Inter', 'sans-serif'] },
+                }
+            }
+        }
+    </script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        body { font-family: 'Inter', sans-serif; background-color: #0b0f19; color: #f8fafc; }
+        input[type=range] { accent-color: #3b82f6; }
+        .canvas-shadow { box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.5), 0 10px 10px -5px rgba(0, 0, 0, 0.4); }
+    </style>
+</head>
+<body class="h-full flex flex-col justify-between overflow-x-hidden">
+
+    <!-- Header -->
+    <header class="bg-slate-900/90 backdrop-blur-md border-b border-slate-800 sticky top-0 z-40 px-6 py-4 flex items-center justify-between shadow-lg">
+        <div class="flex items-center space-x-3">
+            <div class="bg-blue-600 p-2.5 rounded-xl text-white shadow-md shadow-blue-500/20">
+                <i class="fa-solid fa-atom text-xl"></i>
+            </div>
+            <div>
+                <h1 class="text-xl font-bold tracking-tight text-white">Espectrómetro Óptico de Laboratorio (Goniómetro)</h1>
+                <p class="text-xs text-slate-400">Banco Óptico con Colimador, Platina y Anteojo Móvil</p>
+            </div>
+        </div>
+        <div class="flex items-center space-x-3">
+            <button onclick="openModal('theoryModal')" class="flex items-center space-x-2 bg-slate-800 hover:bg-slate-700 text-slate-200 px-4 py-2 rounded-xl text-sm font-medium transition border border-slate-700">
+                <i class="fa-solid fa-book-open text-blue-400"></i>
+                <span class="hidden sm:inline">Guía Teórica</span>
+            </button>
+            <button onclick="openModal('pedagogyModal')" class="flex items-center space-x-2 bg-blue-600 hover:bg-blue-500 text-white px-4 py-2 rounded-xl text-sm font-medium transition shadow-lg shadow-blue-600/30">
+                <i class="fa-solid fa-lightbulb"></i>
+                <span class="hidden sm:inline">Pedagogía</span>
+            </button>
+        </div>
+    </header>
+
+    <!-- Main Content -->
+    <main class="flex-grow container mx-auto px-4 py-6 grid grid-cols-1 lg:grid-cols-12 gap-6 max-w-7xl">
+        
+        <!-- Left Column: Controls (5 Cols) -->
+        <div class="lg:col-span-5 flex flex-col space-y-6">
+            
+            <!-- Source Selector Card -->
+            <div class="bg-slate-900/90 border border-slate-800 rounded-2xl p-5 shadow-xl backdrop-blur-sm">
+                <h2 class="text-sm font-semibold uppercase tracking-wider text-slate-400 mb-4 flex items-center">
+                    <i class="fa-solid fa-bolt mr-2 text-blue-400"></i> Fuente de Emisión
+                </h2>
+                
+                <div class="grid grid-cols-2 gap-3 mb-4">
+                    <button id="btnSodium" onclick="setSource('sodium')" class="flex flex-col items-center justify-center p-3 rounded-xl border-2 transition font-medium text-xs bg-amber-500/10 border-amber-500/80 text-amber-300 shadow-md">
+                        <i class="fa-solid fa-lightbulb text-xl mb-1 text-amber-400"></i>
+                        <span>Vapor de Sodio (Na)</span>
+                        <span class="text-[9px] text-amber-400/80 mt-0.5">Doblete 589 nm</span>
+                    </button>
+                    <button id="btnIncandescent" onclick="setSource('incandescent')" class="flex flex-col items-center justify-center p-3 rounded-xl border-2 transition font-medium text-xs bg-slate-800/60 border-slate-700 text-slate-400 hover:border-slate-600">
+                        <i class="fa-solid fa-lightbulb text-xl mb-1 text-orange-400"></i>
+                        <span>Incandescente</span>
+                        <span class="text-[9px] text-slate-500 mt-0.5">Espectro Continuo</span>
+                    </button>
+                    <button id="btnMercury" onclick="setSource('mercury')" class="flex flex-col items-center justify-center p-3 rounded-xl border-2 transition font-medium text-xs bg-slate-800/60 border-slate-700 text-slate-400 hover:border-slate-600">
+                        <i class="fa-solid fa-lightbulb text-xl mb-1 text-emerald-400"></i>
+                        <span>Vapor de Mercurio (Hg)</span>
+                        <span class="text-[9px] text-slate-500 mt-0.5">Líneas Múltiples</span>
+                    </button>
+                    <button id="btnHydrogen" onclick="setSource('hydrogen')" class="flex flex-col items-center justify-center p-3 rounded-xl border-2 transition font-medium text-xs bg-slate-800/60 border-slate-700 text-slate-400 hover:border-slate-600">
+                        <i class="fa-solid fa-lightbulb text-xl mb-1 text-rose-400"></i>
+                        <span>Hidrógeno (H)</span>
+                        <span class="text-[9px] text-slate-500 mt-0.5">Serie de Balmer</span>
+                    </button>
+                </div>
+
+                <!-- Power Switch -->
+                <div class="flex items-center justify-between pt-3 border-t border-slate-800">
+                    <span class="text-sm font-medium text-slate-300">Alimentación de la Lámpara</span>
+                    <label class="relative inline-flex items-center cursor-pointer">
+                        <input type="checkbox" id="powerSwitch" checked onchange="togglePower()" class="sr-only peer">
+                        <div class="w-11 h-6 bg-slate-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
+                    </label>
+                </div>
+            </div>
+
+            <!-- Spectrometer Goniometer Controls -->
+            <div class="bg-slate-900/90 border border-slate-800 rounded-2xl p-5 shadow-xl backdrop-blur-sm flex-grow flex flex-col justify-between space-y-4">
+                <div>
+                    <h2 class="text-sm font-semibold uppercase tracking-wider text-slate-400 mb-4 flex items-center">
+                        <i class="fa-solid fa-compass mr-2 text-blue-400"></i> Controles del Goniómetro
+                    </h2>
+
+                    <!-- Telescope Angle Slider -->
+                    <div class="space-y-4">
+                        <div>
+                            <div class="flex justify-between text-xs text-slate-400 mb-1">
+                                <span>Ángulo del Anteojo (Telescopio)</span>
+                                <span id="angleVal" class="font-mono text-blue-400 font-bold">0.0°</span>
+                            </div>
+                            <input type="range" id="angleRange" min="-65" max="65" step="0.1" value="0" oninput="updateAngle(this.value)" class="w-full h-2 bg-slate-800 rounded-lg appearance-none cursor-pointer">
+                            <div class="flex justify-between text-[10px] text-slate-500 mt-1">
+                                <span>-65°</span>
+                                <span class="text-slate-400 font-semibold">0° (Orden Cero)</span>
+                                <span>+65°</span>
+                            </div>
+                        </div>
+
+                        <!-- Slit Width -->
+                        <div>
+                            <div class="flex justify-between text-xs text-slate-400 mb-1">
+                                <span>Apertura de la Rendija (Colimador)</span>
+                                <span id="slitVal" class="font-mono text-slate-300">0.05 mm</span>
+                            </div>
+                            <input type="range" id="slitRange" min="0.01" max="0.20" step="0.01" value="0.05" oninput="updateSlit(this.value)" class="w-full h-2 bg-slate-800 rounded-lg appearance-none cursor-pointer">
+                        </div>
+
+                        <!-- Grating Density -->
+                        <div>
+                            <div class="flex justify-between text-xs text-slate-400 mb-1">
+                                <span>Red de Difracción</span>
+                                <span id="gratingVal" class="font-mono text-slate-300">600 l/mm</span>
+                            </div>
+                            <input type="range" id="gratingRange" min="300" max="1200" step="100" value="600" oninput="updateGrating(this.value)" class="w-full h-2 bg-slate-800 rounded-lg appearance-none cursor-pointer">
+                        </div>
+                    </div>
+                </div>
+
+                <div class="pt-4 border-t border-slate-800 flex space-x-3">
+                    <button onclick="resetSetup()" class="flex-1 bg-slate-800 hover:bg-slate-700 text-slate-300 py-2.5 px-3 rounded-xl text-xs font-semibold transition border border-slate-700">
+                        <i class="fa-solid fa-rotate-left mr-1.5"></i> Restablecer Cero
+                    </button>
+                    <button onclick="snapMeasurement()" class="flex-1 bg-blue-600/20 hover:bg-blue-600/30 text-blue-400 py-2.5 px-3 rounded-xl text-xs font-semibold transition border border-blue-500/30">
+                        <i class="fa-solid fa-crosshairs mr-1.5"></i> Registrar Ángulo
+                    </button>
+                </div>
+            </div>
+
+        </div>
+
+        <!-- Right Column: Optical Setup Canvas & Ocular Viewport (7 Cols) -->
+        <div class="lg:col-span-7 flex flex-col space-y-6">
+            
+            <!-- Top View Optical Bench Canvas (Lab Simulation) -->
+            <div class="bg-slate-900/90 border border-slate-800 rounded-2xl p-5 shadow-xl backdrop-blur-sm relative overflow-hidden flex flex-col">
+                <div class="flex items-center justify-between mb-3">
+                    <h2 class="text-sm font-semibold uppercase tracking-wider text-slate-400 flex items-center">
+                        <i class="fa-solid fa-eye mr-2 text-blue-400"></i> Vista Superior del Espectrómetro de Brazo
+                    </h2>
+                    <span id="sourceBadge" class="px-2.5 py-1 rounded-full text-xs font-semibold bg-amber-500/20 text-amber-300 border border-amber-500/30">
+                        Sodio (Na)
+                    </span>
+                </div>
+
+                <div class="relative w-full bg-slate-950 rounded-xl border border-slate-800 h-64 overflow-hidden flex items-center justify-center canvas-shadow">
+                    <canvas id="benchCanvas" class="w-full h-full block"></canvas>
+                    
+                    <!-- Overlay when powered off -->
+                    <div id="offOverlay" class="absolute inset-0 bg-slate-950/90 z-20 flex flex-col items-center justify-center transition-opacity opacity-0 pointer-events-none">
+                        <i class="fa-regular fa-lightbulb text-slate-600 text-5xl mb-2"></i>
+                        <p class="text-slate-400 text-sm font-medium">Lámpara apagada. Conecte el interruptor.</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Bottom: Realistic Ocular Reticle Viewport -->
+            <div class="bg-slate-900/90 border border-slate-800 rounded-2xl p-5 shadow-xl backdrop-blur-sm flex flex-col">
+                <div class="flex items-center justify-between mb-3">
+                    <h2 class="text-sm font-semibold uppercase tracking-wider text-slate-400 flex items-center">
+                        <i class="fa-solid fa-crosshairs mr-2 text-blue-400"></i> Ocular del Anteojo (Retícula de Medición)
+                    </h2>
+                    <span id="readingInfo" class="text-xs font-mono text-amber-400">Orden 0° - Imagen Directa</span>
+                </div>
+
+                <div class="relative w-full bg-slate-950 rounded-xl border border-slate-800 h-44 overflow-hidden flex items-center justify-center">
+                    <canvas id="ocularCanvas" class="w-full h-full block"></canvas>
+                </div>
+                
+                <div class="mt-3 flex items-center justify-between text-xs text-slate-400">
+                    <span id="angleHint"><i class="fa-solid fa-circle-info mr-1 text-blue-400"></i> Gira el ángulo del anteojo para alinear la cruz del retículo con las líneas espectrales.</span>
+                    <span id="registeredLog" class="text-slate-500 font-mono">Registros: 0</span>
+                </div>
+            </div>
+
+        </div>
+
+    </main>
+
+    <!-- Footer -->
+    <footer class="bg-slate-900/40 border-t border-slate-800/80 py-3 text-center text-xs text-slate-500">
+        Laboratorio Virtual de Espectrometría por Goniómetro • PROMEF 2026: Gustavo Lazarte, Alejandra Lucia Pérez Lucero, Vicente Capuano
+    </footer>
+
+    <!-- THEORY MODAL -->
+    <div id="theoryModal" class="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/80 backdrop-blur-sm hidden">
+        <div class="bg-slate-900 border border-slate-800 rounded-2xl max-w-2xl w-full mx-4 p-6 shadow-2xl relative max-h-[90vh] overflow-y-auto">
+            <button onclick="closeModal('theoryModal')" class="absolute top-4 right-4 text-slate-400 hover:text-white transition">
+                <i class="fa-solid fa-xmark text-xl"></i>
+            </button>
+            
+            <div class="flex items-center space-x-3 mb-4">
+                <div class="bg-blue-600/20 p-2 rounded-xl text-blue-400 border border-blue-500/30">
+                    <i class="fa-solid fa-book-open text-xl"></i>
+                </div>
+                <h3 class="text-lg font-bold text-white">Fundamento Físico del Espectrómetro de Brazo</h3>
+            </div>
+
+            <div class="space-y-4 text-slate-300 text-sm leading-relaxed">
+                <p>
+                    El <strong>espectrómetro de goniómetro</strong> consta de tres partes principales:
+                </p>
+                <ul class="list-disc pl-5 space-y-2">
+                    <li><strong>Colimador (Brazo Fijo):</strong> Tubo con una rendija ajustable en su foco y una lente convergente que convierte la luz de la lámpara en un haz paralelo.</li>
+                    <li><strong>Platina Central:</strong> Contiene el elemento dispersivo (red de difracción o prisma). La luz incide perpendicularmente y se descompone angularmente.</li>
+                    <li><strong>Anteojo o Telescopio (Brazo Móvil):</strong> Permite al observador enfocar la imagen de la rendija y medir con precisión angular el desvío de cada línea espectral mediante un círculo graduado.</li>
+                </ul>
+
+                <h4 class="font-semibold text-white mt-3">Fuentes Espectrales Incorporadas:</h4>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-3 text-xs">
+                    <div class="bg-slate-950 p-3 rounded-xl border border-slate-800">
+                        <strong class="text-amber-300">Vapor de Sodio (Na):</strong>
+                        <p class="text-slate-400 mt-1">Presenta el célebre doblete amarillo (D1: 589.0 nm y D2: 589.6 nm).</p>
+                    </div>
+                    <div class="bg-slate-950 p-3 rounded-xl border border-slate-800">
+                        <strong class="text-orange-300">Incandescente (Tungsteno):</strong>
+                        <p class="text-slate-400 mt-1">Cuerpo negro térmico continuo que abarca todo el rango visible.</p>
+                    </div>
+                    <div class="bg-slate-950 p-3 rounded-xl border border-slate-800">
+                        <strong class="text-emerald-300">Vapor de Mercurio (Hg):</strong>
+                        <p class="text-slate-400 mt-1">Líneas características intensas: Verde (546.1 nm), Azul (435.8 nm), Amarillo (578 nm) y Violeta (404.7 nm).</p>
+                    </div>
+                    <div class="bg-slate-950 p-3 rounded-xl border border-slate-800">
+                        <strong class="text-rose-300">Hidrógeno (H):</strong>
+                        <p class="text-slate-400 mt-1">Serie de Balmer: H-alfa roja (656.3 nm), H-beta cian (486.1 nm) y H-gamma azul (434.0 nm).</p>
+                    </div>
+                </div>
+
+                <div class="bg-slate-950 p-3 rounded-xl border border-slate-800 text-center font-mono text-blue-400 my-2">
+                    Ecuación de la Red: $d \cdot \sin(\theta) = m \cdot \lambda$
+                </div>
+            </div>
+
+            <div class="mt-6 pt-4 border-t border-slate-800 flex justify-end">
+                <button onclick="closeModal('theoryModal')" class="bg-blue-600 hover:bg-blue-500 text-white px-5 py-2 rounded-xl text-sm font-medium transition">
+                    Cerrar
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- PEDAGOGY MODAL -->
+    <div id="pedagogyModal" class="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/80 backdrop-blur-sm hidden">
+        <div class="bg-slate-900 border border-slate-800 rounded-2xl max-w-2xl w-full mx-4 p-6 shadow-2xl relative max-h-[90vh] overflow-y-auto">
+            <button onclick="closeModal('pedagogyModal')" class="absolute top-4 right-4 text-slate-400 hover:text-white transition">
+                <i class="fa-solid fa-xmark text-xl"></i>
+            </button>
+            
+            <div class="flex items-center space-x-3 mb-4">
+                <div class="bg-blue-600/20 p-2 rounded-xl text-blue-400 border border-blue-500/30">
+                    <i class="fa-solid fa-lightbulb text-xl"></i>
+                </div>
+                <h3 class="text-lg font-bold text-white">Sugerencias Didácticas para el Docente</h3>
+            </div>
+
+            <div class="space-y-4 text-slate-300 text-sm leading-relaxed">
+                <p>
+                    Este simulador interactivo reproduce fielmente el instrumento real de la fotografía de laboratorio. Se recomienda utilizarlo con las siguientes dinámicas de enseñanza:
+                </p>
+                
+                <div class="bg-slate-950/80 p-4 rounded-xl border border-slate-800 space-y-3">
+                    <div class="flex items-start space-x-3">
+                        <div class="bg-blue-600 text-white rounded-full w-6 h-6 flex items-center justify-center text-xs font-bold flex-shrink-0 mt-0.5">1</div>
+                        <div>
+                            <strong class="text-white">Búsqueda a ciegas con el anteojo:</strong>
+                            <p class="text-xs text-slate-400 mt-0.5">Pida al alumno que mantenga la vista en el ocular (visor inferior) mientras gira el deslizador de ángulo, simulando la rotación manual del brazo físico hasta hallar las líneas.</p>
+                        </div>
+                    </div>
+
+                    <div class="flex items-start space-x-3">
+                        <div class="bg-blue-600 text-white rounded-full w-6 h-6 flex items-center justify-center text-xs font-bold flex-shrink-0 mt-0.5">2</div>
+                        <div>
+                            <strong class="text-white">Resolución instrumental y rendija:</strong>
+                            <p class="text-xs text-slate-400 mt-0.5">Haga que experimenten abriendo la rendija al máximo: el doblete del sodio o las líneas cercanas del mercurio se fundirán en una sola mancha ancha, enseñando el concepto físico de poder de resolución.</p>
+                        </div>
+                    </div>
+
+                    <div class="flex items-start space-x-3">
+                        <div class="bg-blue-600 text-white rounded-full w-6 h-6 flex items-center justify-center text-xs font-bold flex-shrink-0 mt-0.5">3</div>
+                        <div>
+                            <strong class="text-white">Validación de la Constante de Rydberg:</strong>
+                            <p class="text-xs text-slate-400 mt-0.5">Con los ángulos registrados para el Hidrógeno, invierta la fórmula de la red para comprobar las longitudes de onda de la serie de Balmer.</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="mt-6 pt-4 border-t border-slate-800 flex justify-end">
+                <button onclick="closeModal('pedagogyModal')" class="bg-blue-600 hover:bg-blue-500 text-white px-5 py-2 rounded-xl text-sm font-medium transition">
+                    Cerrar
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Application Logic -->
+    <script>
+        // State
+        let state = {
+            source: 'sodium', // 'sodium', 'incandescent', 'mercury', 'hydrogen'
+            powerOn: true,
+            angle: 0.0, // -65 to 65 degrees
+            slit: 0.05, // mm
+            grating: 600, // lines/mm
+            snapshots: 0
+        };
+
+        // Spectral Line definitions for each source (angle offsets relative to central order 0°)
+        // Formula reference: sin(theta) = m * lambda * N
+        // For N = 600 lines/mm = 600,000 lines/m.
+        const spectraData = {
+            sodium: {
+                name: "Vapor de Sodio (Na)",
+                colorBadge: "bg-amber-500/20 text-amber-300 border-amber-500/30",
+                lines: [
+                    { lambda: 589.0, color: '#facc15', name: 'D2 Sodio', intensity: 1.0 },
+                    { lambda: 589.6, color: '#fde047', name: 'D1 Sodio', intensity: 0.9 }
+                ]
+            },
+            incandescent: {
+                name: "Incandescente (Tungsteno)",
+                colorBadge: "bg-orange-500/20 text-orange-300 border-orange-500/30",
+                continuous: true
+            },
+            mercury: {
+                name: "Vapor de Mercurio (Hg)",
+                colorBadge: "bg-emerald-500/20 text-emerald-300 border-emerald-500/30",
+                lines: [
+                    { lambda: 404.7, color: '#8b5cf6', name: 'Violeta Hg', intensity: 0.7 },
+                    { lambda: 435.8, color: '#3b82f6', name: 'Azul Hg', intensity: 0.9 },
+                    { lambda: 546.1, color: '#10b981', name: 'Verde Hg', intensity: 1.0 },
+                    { lambda: 578.0, color: '#f59e0b', name: 'Amarillo Hg', intensity: 0.6 }
+                ]
+            },
+            hydrogen: {
+                name: "Hidrógeno (H)",
+                colorBadge: "bg-rose-500/20 text-rose-300 border-rose-500/30",
+                lines: [
+                    { lambda: 434.0, color: '#6366f1', name: 'H-gamma (Azul)', intensity: 0.6 },
+                    { lambda: 486.1, color: '#06b6d4', name: 'H-beta (Cian)', intensity: 0.8 },
+                    { lambda: 656.3, color: '#f43f5e', name: 'H-alfa (Rojo)', intensity: 1.0 }
+                ]
+            }
+        };
+
+        // Canvas references
+        const benchCanvas = document.getElementById('benchCanvas');
+        const benchCtx = benchCanvas.getContext('2d');
+        const ocularCanvas = document.getElementById('ocularCanvas');
+        const ocularCtx = ocularCanvas.getContext('2d');
+
+        function resizeCanvases() {
+            const rectBench = benchCanvas.parentElement.getBoundingClientRect();
+            benchCanvas.width = rectBench.width;
+            benchCanvas.height = rectBench.height;
+
+            const rectOcular = ocularCanvas.parentElement.getBoundingClientRect();
+            ocularCanvas.width = rectOcular.width;
+            ocularCanvas.height = rectOcular.height;
+
+            renderAll();
+        }
+
+        window.addEventListener('resize', resizeCanvases);
+
+        // Controls Handlers
+        function setSource(src) {
+            state.source = src;
+            
+            // Update button styles
+            ['sodium', 'incandescent', 'mercury', 'hydrogen'].forEach(s => {
+                const btn = document.getElementById('btn' + s.charAt(0).toUpperCase() + s.slice(1));
+                if (s === src) {
+                    btn.className = "flex flex-col items-center justify-center p-3 rounded-xl border-2 transition font-medium text-xs bg-blue-600/20 border-blue-500 text-blue-300 shadow-md";
+                } else {
+                    btn.className = "flex flex-col items-center justify-center p-3 rounded-xl border-2 transition font-medium text-xs bg-slate-800/60 border-slate-700 text-slate-400 hover:border-slate-600";
+                }
+            });
+
+            const badge = document.getElementById('sourceBadge');
+            badge.className = "px-2.5 py-1 rounded-full text-xs font-semibold " + spectraData[src].colorBadge;
+            badge.textContent = spectraData[src].name;
+
+            renderAll();
+        }
+
+        function togglePower() {
+            state.powerOn = document.getElementById('powerSwitch').checked;
+            const overlay = document.getElementById('offOverlay');
+            if (state.powerOn) {
+                overlay.style.opacity = '0';
+                overlay.style.pointerEvents = 'none';
+            } else {
+                overlay.style.opacity = '1';
+                overlay.style.pointerEvents = 'auto';
+            }
+            renderAll();
+        }
+
+        function updateAngle(val) {
+            state.angle = parseFloat(val);
+            document.getElementById('angleVal').textContent = state.angle.toFixed(1) + '°';
+            renderAll();
+        }
+
+        function updateSlit(val) {
+            state.slit = parseFloat(val);
+            document.getElementById('slitVal').textContent = parseFloat(val).toFixed(2) + ' mm';
+            renderAll();
+        }
+
+        function updateGrating(val) {
+            state.grating = parseInt(val);
+            document.getElementById('gratingVal').textContent = val + ' l/mm';
+            renderAll();
+        }
+
+        function resetSetup() {
+            state.angle = 0.0;
+            document.getElementById('angleRange').value = 0.0;
+            document.getElementById('angleVal').textContent = '0.0°';
+            renderAll();
+        }
+
+        function snapMeasurement() {
+            state.snapshots++;
+            document.getElementById('registeredLog').textContent = `Registros: ${state.snapshots}`;
+            showNotification(`Ángulo ${state.angle.toFixed(1)}° registrado correctamente.`);
+        }
+
+        function showNotification(msg) {
+            const div = document.createElement('div');
+            div.className = "fixed bottom-5 right-5 z-50 bg-blue-600 text-white px-4 py-2.5 rounded-xl shadow-xl text-xs font-semibold flex items-center space-x-2 animate-bounce";
+            div.innerHTML = `<i class="fa-solid fa-circle-check"></i><span>${msg}</span>`;
+            document.body.appendChild(div);
+            setTimeout(() => div.remove(), 3000);
+        }
+
+        function openModal(id) { document.getElementById(id).classList.remove('hidden'); }
+        function closeModal(id) { document.getElementById(id).classList.add('hidden'); }
+
+        // --- RENDER FUNCTIONS ---
+
+        function renderAll() {
+            renderBench();
+            renderOcular();
+        }
+
+        // 1. Top-View Spectrometer Bench Rendering (Like the lab photo)
+        function renderBench() {
+            const w = benchCanvas.width;
+            const h = benchCanvas.height;
+            benchCtx.clearRect(0, 0, w, h);
+
+            const cx = w * 0.35;
+            const cy = h * 0.55;
+            const armLen = 140;
+
+            // Goniometer central table (cylinder)
+            benchCtx.beginPath();
+            benchCtx.arc(cx, cy, 65, 0, Math.PI * 2);
+            benchCtx.fillStyle = '#1e293b';
+            benchCtx.fill();
+            benchCtx.strokeStyle = '#475569';
+            benchCtx.lineWidth = 3;
+            benchCtx.stroke();
+
+            // Central prism/grating holder
+            benchCtx.fillStyle = '#64748b';
+            benchCtx.fillRect(cx - 10, cy - 15, 20, 30);
+
+            if (!state.powerOn) return;
+
+            // Fixed Collimator Arm (pointing from right to center, matching photo layout)
+            const lampX = w * 0.85;
+            const lampY = cy;
+            
+            // Lamp housing box
+            benchCtx.save();
+            benchCtx.shadowColor = getSourceGlowColor();
+            benchCtx.shadowBlur = 20;
+            benchCtx.fillStyle = '#18181b';
+            benchCtx.fillRect(lampX - 25, lampY - 45, 50, 90);
+            benchCtx.strokeStyle = '#3f3f46';
+            benchCtx.lineWidth = 2;
+            benchCtx.stroke();
+            benchCtx.restore();
+
+            // Glowing slit window on lamp box
+            benchCtx.fillStyle = getSourceGlowColor();
+            benchCtx.fillRect(lampX - 27, lampY - 12, 4, 24);
+
+            // Collimator tube
+            benchCtx.fillStyle = '#334155';
+            benchCtx.fillRect(cx + 20, cy - 12, lampX - cx - 45, 24);
+
+            // Light beam from collimator to center
+            benchCtx.save();
+            const beamGrad = benchCtx.createLinearGradient(lampX, cy, cx, cy);
+            beamGrad.addColorStop(0, getSourceGlowColor());
+            beamGrad.addColorStop(1, 'rgba(255,255,255,0.4)');
+            benchCtx.fillStyle = beamGrad;
+            benchCtx.beginPath();
+            benchCtx.moveTo(lampX - 27, cy - 8);
+            benchCtx.lineTo(cx + 15, cy - 12);
+            benchCtx.lineTo(cx + 15, cy + 12);
+            benchCtx.lineTo(lampX - 27, cy + 8);
+            benchCtx.closePath();
+            benchCtx.fill();
+            benchCtx.restore();
+
+            // Movable Telescope Arm (Rotates around center based on state.angle)
+            benchCtx.save();
+            benchCtx.translate(cx, cy);
+            // Convert user angle to radians (-angle because canvas Y is inverted)
+            benchCtx.rotate(-state.angle * Math.PI / 180);
+
+            // Telescope tube
+            benchCtx.fillStyle = '#475569';
+            benchCtx.fillRect(0, -14, armLen, 28);
+
+            // Eyepiece counterweight / focus knob at the end
+            benchCtx.fillStyle = '#0f172a';
+            benchCtx.fillRect(armLen - 15, -20, 20, 40);
+
+            benchCtx.restore();
+
+            // Diffracted rays fan visual
+            renderDiffractedFans(cx, cy);
+        }
+
+        function getSourceGlowColor() {
+            if (state.source === 'sodium') return '#facc15';
+            if (state.source === 'incandescent') return '#f97316';
+            if (state.source === 'mercury') return '#10b981';
+            return '#f43f5e';
+        }
+
+        function renderDiffractedFans(cx, cy) {
+            benchCtx.save();
+            benchCtx.globalAlpha = 0.35;
+            
+            const srcObj = spectraData[state.source];
+            const dFactor = 1 / state.grating; // grating spacing
+
+            if (srcObj.continuous) {
+                // Continuous rainbow fan
+                for (let a = -55; a <= 55; a += 3) {
+                    let rad = a * Math.PI / 180;
+                    let color = getRainbowColor((a + 55) / 110);
+                    benchCtx.beginPath();
+                    benchCtx.moveTo(cx, cy);
+                    benchCtx.lineTo(cx + 150 * Math.cos(rad), cy - 150 * Math.sin(rad));
+                    benchCtx.strokeStyle = color;
+                    benchCtx.lineWidth = 3;
+                    benchCtx.stroke();
+                }
+            } else {
+                // Discrete emission lines
+                srcObj.lines.forEach(line => {
+                    // Calculate angle using grating equation: sin(theta) = lambda * N
+                    let sinTheta = (line.lambda * 1e-9) * state.grating * 1000;
+                    if (Math.abs(sinTheta) <= 1) {
+                        let thetaDeg = Math.asin(sinTheta) * (180 / Math.PI);
+                        
+                        // Positive order (+1)
+                        drawFanRay(cx, cy, thetaDeg, line.color);
+                        // Negative order (-1)
+                        drawFanRay(cx, cy, -thetaDeg, line.color);
+                    }
+                });
+            }
+            benchCtx.restore();
+        }
+
+        function drawFanRay(cx, cy, deg, color) {
+            let rad = deg * Math.PI / 180;
+            benchCtx.beginPath();
+            benchCtx.moveTo(cx, cy);
+            benchCtx.lineTo(cx + 160 * Math.cos(rad), cy - 160 * Math.sin(rad));
+            benchCtx.strokeStyle = color;
+            benchCtx.lineWidth = 4;
+            benchCtx.stroke();
+        }
+
+        function getRainbowColor(progress) {
+            let hue = (1 - progress) * 260;
+            return `hsl(${hue}, 100%, 50%)`;
+        }
+
+        // 2. Realistic Ocular Viewport Rendering
+        function renderOcular() {
+            const w = ocularCanvas.width;
+            const h = ocularCanvas.height;
+            ocularCtx.clearRect(0, 0, w, h);
+
+            // Dark background of the eyepiece field
+            ocularCtx.fillStyle = '#020617';
+            ocularCtx.fillRect(0, 0, w, h);
+
+            if (!state.powerOn) {
+                drawReticleLines(w, h);
+                return;
+            }
+
+            const centerX = w / 2;
+            const srcObj = spectraData[state.source];
+            const slitSpread = state.slit * 180; // Slit width affects line width
+
+            let currentDesc = "";
+
+            if (srcObj.continuous) {
+                // Continuous spectrum visible across angles near 0°
+                const angleOffset = state.angle; // 0 is direct white light, spread up to +-50°
+                if (Math.abs(angleOffset) <= 50) {
+                    // Map angle to wavelength range 400nm - 700nm
+                    let norm = (angleOffset + 50) / 100;
+                    let lambda = 400 + norm * 300;
+                    let rgb = wavelengthToRGB(lambda);
+                    
+                    // Draw continuous band in the center
+                    ocularCtx.fillStyle = `rgb(${rgb[0]}, ${rgb[1]}, ${rgb[2]})`;
+                    ocularCtx.fillRect(centerX - 15, 0, 30, h);
+                    currentDesc = `Espectro Continuo (aprox. ${lambda.toFixed(0)} nm) en ángulo ${angleOffset.toFixed(1)}°`;
+                } else {
+                    currentDesc = `Campo Oscuro (Fuera de rango espectral)`;
+                }
+            } else {
+                // Check if user's telescope angle aligns with any emission line (orders m = 0, +1, -1)
+                let matchedLine = null;
+                
+                // Check order 0 (Direct image at 0°)
+                if (Math.abs(state.angle) < 1.2) {
+                    matchedLine = { name: "Orden Cero (Imagen Directa)", color: '#ffffff', isZeroOrder: true };
+                } else {
+                    // Check orders m = +1 and m = -1
+                    srcObj.lines.forEach(line => {
+                        let sinTheta = (line.lambda * 1e-9) * state.grating * 1000;
+                        if (Math.abs(sinTheta) <= 1) {
+                            let thetaDeg = Math.asin(sinTheta) * (180 / Math.PI);
+                            
+                            // Check positive order
+                            if (Math.abs(state.angle - thetaDeg) < 2.0) {
+                                matchedLine = { ...line, order: '+1', diff: Math.abs(state.angle - thetaDeg) };
+                            }
+                            // Check negative order
+                            else if (Math.abs(state.angle - (-thetaDeg)) < 2.0) {
+                                matchedLine = { ...line, order: '-1', diff: Math.abs(state.angle - (-thetaDeg)) };
+                            }
+                        }
+                    });
+                }
+
+                if (matchedLine) {
+                    let intensityFactor = 1.0;
+                    if (!matchedLine.isZeroOrder && matchedLine.diff !== undefined) {
+                        intensityFactor = Math.max(0.2, 1 - (matchedLine.diff / 2.0));
+                    }
+
+                    // Draw spectral line through the reticle center
+                    ocularCtx.save();
+                    ocularCtx.shadowColor = matchedLine.color;
+                    ocularCtx.shadowBlur = 15 * intensityFactor;
+                    ocularCtx.fillStyle = matchedLine.color;
+                    
+                    let lineWidth = Math.max(3, slitSpread * intensityFactor);
+                    ocularCtx.fillRect(centerX - (lineWidth / 2), 0, lineWidth, h);
+                    ocularCtx.restore();
+
+                    if (matchedLine.isZeroOrder) {
+                        currentDesc = `Orden 0°: Imagen directa de la fuente (${srcObj.name})`;
+                    } else {
+                        currentDesc = `Línea: ${matchedLine.name} (${matchedLine.lambda} nm, Orden m=${matchedLine.order})`;
+                    }
+                } else {
+                    currentDesc = `Campo Oscuro (Alinee el anteojo hacia una línea espectral)`;
+                }
+            }
+
+            // Draw Crosshair Reticle on top
+            drawReticleLines(w, h);
+
+            // Update reading text
+            document.getElementById('readingInfo').textContent = currentDesc;
+        }
+
+        function drawReticleLines(w, h) {
+            const cx = w / 2;
+            const cy = h / 2;
+
+            ocularCtx.save();
+            ocularCtx.strokeStyle = 'rgba(239, 68, 68, 0.8)'; // Classic red crosshair reticle
+            ocularCtx.lineWidth = 1.5;
+
+            // Vertical crosshair
+            ocularCtx.beginPath();
+            ocularCtx.moveTo(cx, 0);
+            ocularCtx.lineTo(cx, h);
+            ocularCtx.stroke();
+
+            // Horizontal crosshair
+            ocularCtx.beginPath();
+            ocularCtx.moveTo(0, cy);
+            ocularCtx.lineTo(w, cy);
+            ocularCtx.stroke();
+
+            // Reticle center ring
+            ocularCtx.beginPath();
+            ocularCtx.arc(cx, cy, 25, 0, Math.PI * 2);
+            ocularCtx.strokeStyle = 'rgba(239, 68, 68, 0.4)';
+            ocularCtx.stroke();
+
+            ocularCtx.restore();
+        }
+
+        // Helper: Wavelength to RGB converter for continuous spectrum
+        function wavelengthToRGB(wavelength) {
+            let r, g, b;
+            if (wavelength >= 380 && wavelength < 440) {
+                r = -(wavelength - 440) / (440 - 380); g = 0.0; b = 1.0;
+            } else if (wavelength >= 440 && wavelength < 490) {
+                r = 0.0; g = (wavelength - 440) / (490 - 440); b = 1.0;
+            } else if (wavelength >= 490 && wavelength < 510) {
+                r = 0.0; g = 1.0; b = -(wavelength - 510) / (510 - 490);
+            } else if (wavelength >= 510 && wavelength < 580) {
+                r = (wavelength - 510) / (580 - 510); g = 1.0; b = 0.0;
+            } else if (wavelength >= 580 && wavelength < 645) {
+                r = 1.0; g = -(wavelength - 645) / (645 - 580); b = 0.0;
+            } else if (wavelength >= 645 && wavelength <= 780) {
+                r = 1.0; g = 0.0; b = 0.0;
+            } else {
+                r = 0.0; g = 0.0; b = 0.0;
+            }
+            return [Math.round(r * 255), Math.round(g * 255), Math.round(b * 255)];
+        }
+
+        // Initialize on load
+        window.onload = function() {
+            resizeCanvases();
+        };
+    </script>
+</body>
+</html>

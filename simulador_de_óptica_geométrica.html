@@ -1,0 +1,1539 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Simulador de Óptica Geométrica - Kit GX-5002</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- FontAwesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- KaTeX for rendering mathematical formulas -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/contrib/auto-render.min.js"></script>
+    
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
+        
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #0f172a;
+            color: #f8fafc;
+            user-select: none;
+        }
+
+        .code-font {
+            font-family: 'JetBrains Mono', monospace;
+        }
+
+        /* Custom scrollbars */
+        ::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #1e293b;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #475569;
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #64748b;
+        }
+
+        /* Canvas glow effects */
+        canvas {
+            touch-action: none;
+            cursor: crosshair;
+        }
+
+        .glass-panel {
+            background: rgba(30, 41, 59, 0.75);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .btn-exp {
+            transition: all 0.2s ease;
+        }
+        .btn-exp.active {
+            border-color: #ef4444;
+            background-color: rgba(239, 68, 68, 0.15);
+            box-shadow: 0 0 15px rgba(239, 68, 68, 0.25);
+        }
+
+        /* Laser toggle switch styling */
+        .laser-switch {
+            width: 38px;
+            height: 20px;
+            background-color: #334155;
+            border-radius: 9999px;
+            position: relative;
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+        .laser-switch.on {
+            background-color: #ef4444;
+            box-shadow: 0 0 8px #ef4444;
+        }
+        .laser-switch-dot {
+            width: 14px;
+            height: 14px;
+            background-color: white;
+            border-radius: 50%;
+            position: absolute;
+            top: 3px;
+            left: 3px;
+            transition: transform 0.3s;
+        }
+        .laser-switch.on .laser-switch-dot {
+            transform: translateX(18px);
+        }
+    </style>
+</head>
+<body class="h-screen w-screen overflow-hidden flex flex-col bg-slate-950 text-slate-100">
+
+    <!-- TOP HEADER -->
+    <header class="h-14 bg-slate-900 border-b border-slate-800 flex items-center justify-between px-4 shrink-0 z-20">
+        <div class="flex items-center space-x-3">
+            <div class="w-8 h-8 rounded-lg bg-red-600/20 border border-red-500/50 flex items-center justify-center text-red-500 font-bold">
+                <i class="fa-solid font-bold fa-lightbulb"></i>
+            </div>
+            <div>
+                <h1 class="text-base font-bold tracking-wide text-slate-100 flex items-center gap-2">
+                    Laboratorio de Óptica Geométrica <span class="text-xs font-semibold px-2 py-0.5 rounded bg-amber-500/20 text-amber-400 border border-amber-500/30">GX-5002</span>
+                </h1>
+            </div>
+        </div>
+
+        <div class="flex items-center space-x-4">
+            <div class="text-xs text-slate-400 flex items-center gap-2 bg-slate-800/60 px-3 py-1.5 rounded-full border border-slate-700/50">
+                <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+                <span>Motor Física: Ley de Snell & Fresnel (2D Ray Tracing)</span>
+            </div>
+            <button id="btnResetAll" class="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs rounded-md transition flex items-center gap-1.5 border border-slate-700">
+                <i class="fa-solid fa-rotate-left"></i> Restablecer Posiciones
+            </button>
+        </div>
+    </header>
+
+    <!-- MAIN EXPERIMENT SELECTOR BAR (8 Presets matching the photo) -->
+    <nav class="bg-slate-900/90 border-b border-slate-800 px-4 py-2 shrink-0 z-10 overflow-x-auto">
+        <div class="flex space-x-2 min-w-max" id="experimentTabs">
+            <!-- Rendered by JS -->
+        </div>
+    </nav>
+
+    <!-- CENTER & SIDEBAR LAYOUT -->
+    <div class="flex-1 flex overflow-hidden relative">
+
+        <!-- WORKSPACE / CANVAS CONTAINER -->
+        <main class="flex-1 relative bg-slate-950 flex flex-col items-center justify-center overflow-hidden">
+            
+            <!-- Floating Canvas Toolbar -->
+            <div class="absolute top-3 left-3 z-10 flex flex-wrap items-center gap-2 bg-slate-900/80 backdrop-blur border border-slate-800 p-2 rounded-xl shadow-lg">
+                <!-- Grid / Disk Toggle -->
+                <button id="btnToggleGrid" class="px-2.5 py-1.5 rounded-lg text-xs font-medium bg-slate-800 text-slate-300 hover:bg-slate-700 border border-slate-700 transition flex items-center gap-1.5">
+                    <i class="fa-solid fa-compass"></i> Disco Óptico
+                </button>
+                <button id="btnToggleNormals" class="px-2.5 py-1.5 rounded-lg text-xs font-medium bg-slate-800 text-slate-300 hover:bg-slate-700 border border-slate-700 transition flex items-center gap-1.5">
+                    <i class="fa-solid fa-arrows-to-dot"></i> Normales & Ángulos
+                </button>
+                <button id="btnToggleFocus" class="px-2.5 py-1.5 rounded-lg text-xs font-medium bg-slate-800 text-slate-300 hover:bg-slate-700 border border-slate-700 transition flex items-center gap-1.5">
+                    <i class="fa-solid fa-bullseye"></i> Focos / Ejes
+                </button>
+                <div class="h-4 w-[1px] bg-slate-700 mx-1"></div>
+                <!-- Ray mode -->
+                <div class="flex items-center bg-slate-800 rounded-lg p-0.5 border border-slate-700 text-xs">
+                    <button id="btnRays1" class="px-2 py-1 rounded text-slate-400 hover:text-white">1 Rayo</button>
+                    <button id="btnRays3" class="px-2 py-1 rounded bg-red-600 text-white font-semibold shadow">3 Rayos</button>
+                    <button id="btnRays5" class="px-2 py-1 rounded text-slate-400 hover:text-white">5 Rayos</button>
+                </div>
+            </div>
+
+            <!-- Canvas Element -->
+            <canvas id="opticsCanvas" class="w-full h-full block"></canvas>
+
+            <!-- On-Screen Drag Hint -->
+            <div class="absolute bottom-3 left-3 text-xs text-slate-400 bg-slate-900/80 backdrop-blur px-3 py-1.5 rounded-lg border border-slate-800 flex items-center gap-2 pointer-events-none">
+                <i class="fa-solid fa-hand-pointer text-amber-400"></i>
+                <span>Arrastra el emisor o el elemento óptico. Mantén pulsada la rueda o <code class="text-amber-300">Shift</code> para rotar.</span>
+            </div>
+
+            <!-- Real-Time Metrics Overlay -->
+            <div class="absolute top-3 right-3 z-10 bg-slate-900/90 backdrop-blur border border-slate-800 p-3 rounded-xl shadow-xl w-64 text-xs space-y-2">
+                <div class="font-semibold text-slate-200 border-b border-slate-800 pb-1 flex justify-between items-center">
+                    <span><i class="fa-solid fa-gauge-high text-red-500 mr-1"></i> Telemetría Óptica</span>
+                    <span id="opticsStatusBadge" class="text-[10px] px-1.5 py-0.5 bg-emerald-500/20 text-emerald-400 rounded border border-emerald-500/30">Activo</span>
+                </div>
+                <div class="space-y-1 code-font text-[11px]" id="telemetryContent">
+                    <div class="flex justify-between text-slate-400">
+                        <span>Ángulo de Incidencia (&theta;<sub>i</sub>):</span>
+                        <span id="valThetaI" class="text-amber-400 font-bold">0.0°</span>
+                    </div>
+                    <div class="flex justify-between text-slate-400">
+                        <span>Ángulo de Refracción (&theta;<sub>r</sub>):</span>
+                        <span id="valThetaR" class="text-cyan-400 font-bold">0.0°</span>
+                    </div>
+                    <div class="flex justify-between text-slate-400">
+                        <span>Desviación (&delta;):</span>
+                        <span id="valDeviation" class="text-purple-400 font-bold">0.0°</span>
+                    </div>
+                    <div class="flex justify-between text-slate-400">
+                        <span>Distancia Focal (f):</span>
+                        <span id="valFocalLength" class="text-emerald-400 font-bold">-- cm</span>
+                    </div>
+                </div>
+            </div>
+
+        </main>
+
+        <!-- RIGHT SIDEBAR: CONTROLS & THEORY -->
+        <aside class="w-96 bg-slate-900 border-l border-slate-800 flex flex-col shrink-0 z-10 overflow-hidden">
+            
+            <!-- Sidebar Navigation Tabs -->
+            <div class="flex border-b border-slate-800 bg-slate-950/50">
+                <button id="tabBtnControls" class="flex-1 py-2.5 text-xs font-semibold text-red-400 border-b-2 border-red-500 transition flex items-center justify-center gap-1.5">
+                    <i class="fa-solid fa-sliders"></i> Controles
+                </button>
+                <button id="tabBtnTheory" class="flex-1 py-2.5 text-xs font-semibold text-slate-400 hover:text-slate-200 border-b-2 border-transparent transition flex items-center justify-center gap-1.5">
+                    <i class="fa-solid fa-book-open"></i> Teoría y Fórmulas
+                </button>
+                <button id="tabBtnAPA" class="flex-1 py-2.5 text-xs font-semibold text-slate-400 hover:text-slate-200 border-b-2 border-transparent transition flex items-center justify-center gap-1.5">
+                    <i class="fa-solid fa-quote-right"></i> Citas
+                </button>
+            </div>
+
+            <!-- TAB CONTENT AREA -->
+            <div class="flex-1 overflow-y-auto p-4 space-y-6">
+
+                <!-- CONTROLS PANEL -->
+                <div id="panelControls" class="space-y-5">
+                    
+                    <!-- Laser Box Controls (Replica of physical orange box) -->
+                    <div class="bg-slate-800/50 rounded-xl p-3.5 border border-slate-700/60 space-y-3">
+                        <div class="flex items-center justify-between border-b border-slate-700/60 pb-2">
+                            <span class="text-xs font-bold text-amber-400 flex items-center gap-1.5">
+                                <i class="fa-solid fa-box text-amber-500"></i> Emisor Láser Triplo (GX-5002)
+                            </span>
+                            <span class="text-[10px] text-slate-400 bg-amber-500/10 border border-amber-500/20 px-2 py-0.5 rounded">650nm Red</span>
+                        </div>
+
+                        <!-- Individual switches -->
+                        <div class="grid grid-cols-3 gap-2">
+                            <div class="bg-slate-900/80 p-2 rounded-lg border border-slate-700 flex flex-col items-center gap-1.5">
+                                <span class="text-[10px] text-slate-400 font-medium">Láser Superior</span>
+                                <div id="swLaser1" class="laser-switch on"><div class="laser-switch-dot"></div></div>
+                            </div>
+                            <div class="bg-slate-900/80 p-2 rounded-lg border border-slate-700 flex flex-col items-center gap-1.5">
+                                <span class="text-[10px] text-slate-400 font-medium">Láser Central</span>
+                                <div id="swLaser2" class="laser-switch on"><div class="laser-switch-dot"></div></div>
+                            </div>
+                            <div class="bg-slate-900/80 p-2 rounded-lg border border-slate-700 flex flex-col items-center gap-1.5">
+                                <span class="text-[10px] text-slate-400 font-medium">Láser Inferior</span>
+                                <div id="swLaser3" class="laser-switch on"><div class="laser-switch-dot"></div></div>
+                            </div>
+                        </div>
+
+                        <!-- Laser height & angle slider -->
+                        <div class="space-y-2 pt-1">
+                            <div>
+                                <div class="flex justify-between text-xs text-slate-300 mb-1">
+                                    <span>Posición Vertical (Y)</span>
+                                    <span id="lblLaserY" class="code-font text-red-400">0 px</span>
+                                </div>
+                                <input type="range" id="sldLaserY" min="-150" max="150" value="0" class="w-full accent-red-500 h-1.5 bg-slate-700 rounded-lg appearance-none cursor-pointer">
+                            </div>
+                            <div>
+                                <div class="flex justify-between text-xs text-slate-300 mb-1">
+                                    <span>Ángulo Emisor (&alpha;):</span>
+                                    <span id="lblLaserAngle" class="code-font text-red-400">0.0°</span>
+                                </div>
+                                <input type="range" id="sldLaserAngle" min="-45" max="45" value="0" step="0.5" class="w-full accent-red-500 h-1.5 bg-slate-700 rounded-lg appearance-none cursor-pointer">
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Optical Element Physical Properties -->
+                    <div class="bg-slate-800/50 rounded-xl p-3.5 border border-slate-700/60 space-y-4">
+                        <div class="flex items-center justify-between border-b border-slate-700/60 pb-2">
+                            <span class="text-xs font-bold text-cyan-400 flex items-center gap-1.5">
+                                <i class="fa-solid fa-shapes"></i> Propiedades del Elemento
+                            </span>
+                            <span id="elementNameBadge" class="text-[10px] text-cyan-300 bg-cyan-500/10 border border-cyan-500/20 px-2 py-0.5 rounded font-medium">Bloque Rectangular</span>
+                        </div>
+
+                        <!-- Refractive Index n -->
+                        <div id="groupRefractiveIndex">
+                            <div class="flex justify-between text-xs text-slate-300 mb-1">
+                                <span class="flex items-center gap-1">Índice de Refracción (n_2):</span>
+                                <span id="lblN" class="code-font text-cyan-400 font-bold">1.520 (Vidrio Crown)</span>
+                            </div>
+                            <input type="range" id="sldN" min="1.00" max="2.10" step="0.01" value="1.52" class="w-full accent-cyan-500 h-1.5 bg-slate-700 rounded-lg appearance-none cursor-pointer">
+                            <div class="flex justify-between text-[10px] text-slate-500 mt-1">
+                                <span>Aire (1.00)</span>
+                                <span>Agua (1.33)</span>
+                                <span>Vidrio (1.52)</span>
+                                <span>Diamante (2.42)</span>
+                            </div>
+                        </div>
+
+                        <!-- Curvature Radius / Focal length modifier -->
+                        <div id="groupCurvature">
+                            <div class="flex justify-between text-xs text-slate-300 mb-1">
+                                <span>Radio de Curvatura / Forma ($R$):</span>
+                                <span id="lblRadius" class="code-font text-emerald-400 font-bold">120 mm</span>
+                            </div>
+                            <input type="range" id="sldRadius" min="50" max="250" value="120" step="1" class="w-full accent-emerald-500 h-1.5 bg-slate-700 rounded-lg appearance-none cursor-pointer">
+                        </div>
+
+                        <!-- Element Rotation -->
+                        <div>
+                            <div class="flex justify-between text-xs text-slate-300 mb-1">
+                                <span>Rotación del Elemento (&theta;):</span>
+                                <span id="lblElemAngle" class="code-font text-amber-400 font-bold">0.0°</span>
+                            </div>
+                            <input type="range" id="sldElemAngle" min="-180" max="180" value="0" step="0.5" class="w-full accent-amber-500 h-1.5 bg-slate-700 rounded-lg appearance-none cursor-pointer">
+                        </div>
+
+                        <!-- Roughness (for Diffuse Reflection) -->
+                        <div id="groupRoughness" class="hidden">
+                            <div class="flex justify-between text-xs text-slate-300 mb-1">
+                                <span>Rugosidad Superficial ($\sigma_{micro}$):</span>
+                                <span id="lblRoughness" class="code-font text-orange-400 font-bold">Alto</span>
+                            </div>
+                            <input type="range" id="sldRoughness" min="1" max="10" value="5" step="1" class="w-full accent-orange-500 h-1.5 bg-slate-700 rounded-lg appearance-none cursor-pointer">
+                        </div>
+                    </div>
+
+                    <!-- Quick Preset Material Picker -->
+                    <div class="bg-slate-800/30 rounded-xl p-3 border border-slate-800 space-y-2">
+                        <span class="text-[11px] font-semibold text-slate-400 block">Materiales del Kit:</span>
+                        <div class="grid grid-cols-3 gap-1.5">
+                            <button onclick="setMaterial(1.49, 'Acrílico (PMMA)')" class="px-2 py-1 bg-slate-800 hover:bg-slate-700 text-slate-300 text-[11px] rounded border border-slate-700 text-center">Acrílico (1.49)</button>
+                            <button onclick="setMaterial(1.52, 'Vidrio Crown')" class="px-2 py-1 bg-slate-800 hover:bg-slate-700 text-slate-300 text-[11px] rounded border border-slate-700 text-center">Vidrio (1.52)</button>
+                            <button onclick="setMaterial(1.62, 'Vidrio Flint')" class="px-2 py-1 bg-slate-800 hover:bg-slate-700 text-slate-300 text-[11px] rounded border border-slate-700 text-center">Flint (1.62)</button>
+                        </div>
+                    </div>
+
+                </div>
+
+                <!-- THEORY & MATHEMATICS PANEL -->
+                <div id="panelTheory" class="hidden space-y-5 text-slate-300 text-xs leading-relaxed">
+                    <div id="theoryDynamicContent" class="space-y-4">
+                        <!-- Rendered by JS according to selected experiment -->
+                    </div>
+                </div>
+
+                <!-- APA REFERENCES PANEL -->
+                <div id="panelAPA" class="hidden space-y-4 text-xs leading-relaxed">
+                    <div class="bg-slate-800/50 rounded-xl p-3.5 border border-slate-700/60">
+                        <h3 class="font-bold text-red-400 text-sm mb-2 flex items-center gap-2">
+                            <i class="fa-solid fa-book"></i> Referencias Bibliográficas APA (7.ª ed.)
+                        </h3>
+                        <p class="text-slate-400 text-[11px] mb-3">
+                            Los fundamentos físicos y modelos matemáticos de este simulador están sustentados en la literatura académica estándar universal de física universitaria y óptica:
+                        </p>
+
+                        <div class="space-y-3 text-slate-300 text-[11px]">
+                            <div class="pl-4 -indent-4 border-l-2 border-red-500/40 bg-slate-900/40 p-2 rounded">
+                                Hecht, E. (2017). <em>Optics</em> (5.ª ed.). Pearson Education.
+                            </div>
+                            <div class="pl-4 -indent-4 border-l-2 border-cyan-500/40 bg-slate-900/40 p-2 rounded">
+                                Young, H. D., & Freedman, R. A. (2020). <em>Sears y Zemansky: Física universitaria con física moderna</em> (Vol. 2, 15.ª ed.). Pearson Hispanoamérica.
+                            </div>
+                            <div class="pl-4 -indent-4 border-l-2 border-emerald-500/40 bg-slate-900/40 p-2 rounded">
+                                Serway, R. A., & Jewett, J. W. (2019). <em>Física para ciencias e ingeniería</em> (Vol. 2, 10.ª ed.). Cengage Learning.
+                            </div>
+                            <div class="pl-4 -indent-4 border-l-2 border-amber-500/40 bg-slate-900/40 p-2 rounded">
+                                Tipler, P. A., & Mosca, G. (2021). <em>Física para la ciencia y la tecnología: Luz y física moderna</em> (Vol. 2B, 6.ª ed.). Reverté.
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+        </aside>
+
+    </div>
+
+    <!-- JAVASCRIPT SIMULATOR ENGINE -->
+    <script>
+        // --- EXPERIMENT DATA PRESETS (Matching GX-5002 manual) ---
+        const EXPERIMENTS = [
+            {
+                id: 'rect_block',
+                name: '1. Refracción en Bloque Rectangular',
+                shortName: 'Bloque Rectangular',
+                icon: 'fa-vector-square',
+                type: 'refraction',
+                shape: 'rectangle',
+                n: 1.52,
+                desc: 'Demuestra el desplazamiento lateral del rayo de luz al atravesar un medio de caras planas y paralelas según la Ley de Snell.',
+                theory: `
+                    <h4 class="font-bold text-amber-400 text-sm">Ladrillo de Caras Paralelas</h4>
+                    <p>Cuando un rayo de luz incide sobre un bloque transparente de lados paralelos con un ángulo $\\theta_1$, experimenta dos refracciones sucesivas:</p>
+                    <ol class="list-decimal pl-4 space-y-1 my-2">
+                        <li>En la primera cara (aire $\\to$ vidrio): $\\sin \\theta_1 = n \\sin \\theta_2$.</li>
+                        <li>En la segunda cara (vidrio $\\to$ aire): $n \\sin \\theta_2 = \\sin \\theta_3$.</li>
+                    </ol>
+                    <p>Como las caras son paralelas, $\\theta_3 = \\theta_1$, por lo que el rayo emergente es <strong>estrictamente paralelo</strong> al rayo incidente pero sufre un <em>desplazamiento lateral ($d$)</em>.</p>
+                    <div class="bg-slate-950 p-3 rounded border border-slate-800 code-font text-cyan-300 my-2">
+                        $$d = t \\cdot \\frac{\\sin(\\theta_1 - \\theta_2)}{\\cos \\theta_2}$$
+                    </div>
+                    <p class="text-slate-400">donde $t$ es el grosor del bloque y $\\theta_2 = \\arcsin(\\frac{\\sin \\theta_1}{n})$.</p>
+                `
+            },
+            {
+                id: 'prism',
+                name: '2. Refracción en Prisma Triangular',
+                shortName: 'Prisma Triangular',
+                icon: 'fa-play',
+                type: 'refraction',
+                shape: 'prism',
+                n: 1.52,
+                desc: 'Muestra la desviación angular total ($\\delta$) de la luz al refractarse a través de un prisma de ángulo refractante $A$.',
+                theory: `
+                    <h4 class="font-bold text-amber-400 text-sm">Desviación en Prisma Triangular</h4>
+                    <p>Un prisma óptico desvía el rayo de luz entrante debido a dos refracciones continuas en caras no paralelas que forman un ángulo de ápice $A$.</p>
+                    <div class="bg-slate-950 p-3 rounded border border-slate-800 code-font text-purple-300 my-2">
+                        $$\\delta = \\theta_{i1} + \\theta_{r2} - A$$
+                    </div>
+                    <p>La <strong>Desviación Mínima ($\\delta_{mín}$)</strong> se alcanza cuando el rayo pasa de forma simétrica dentro del prisma ($\\theta_{i1} = \\theta_{r2}$):</p>
+                    <div class="bg-slate-950 p-3 rounded border border-slate-800 code-font text-emerald-300 my-2">
+                        $$n = \\frac{\\sin\\left(\\frac{A + \\delta_{mín}}{2}\\right)}{\\sin\\left(\\frac{A}{2}\\right)}$$
+                    </div>
+                `
+            },
+            {
+                id: 'biconvex',
+                name: '3. Lente Biconvexa (Convergente)',
+                shortName: 'Lente Convexa',
+                icon: 'fa-circle-half-stroke',
+                type: 'lens',
+                shape: 'biconvex',
+                n: 1.52,
+                desc: 'Lente delgada convergente. Los rayos paralelos incidentes convergen en el punto focal real ($F$).',
+                theory: `
+                    <h4 class="font-bold text-amber-400 text-sm">Lente Biconvexa (Convergente)</h4>
+                    <p>Una lente biconvexa es más gruesa en el centro que en los bordes. Actúa refractando los rayos paralelos hacia un único punto de convergencia llamado <strong>Foco Real ($F$)</strong>.</p>
+                    <p class="font-semibold text-slate-200 mt-2">Ecuación del Fabricante de Lentes:</p>
+                    <div class="bg-slate-950 p-3 rounded border border-slate-800 code-font text-cyan-300 my-2">
+                        $$\\frac{1}{f} = (n - 1) \\left( \\frac{1}{R_1} - \\frac{1}{R_2} \\right)$$
+                    </div>
+                    <p>Para una lente simétrica con $R_1 = R$ y $R_2 = -R$:</p>
+                    <div class="bg-slate-950 p-3 rounded border border-slate-800 code-font text-emerald-300 my-2">
+                        $$f = \\frac{R}{2(n - 1)}$$
+                    </div>
+                `
+            },
+            {
+                id: 'biconcave',
+                name: '4. Lente Bicóncava (Divergente)',
+                shortName: 'Lente Cóncava',
+                icon: 'fa-grip-lines-vertical',
+                type: 'lens',
+                shape: 'biconcave',
+                n: 1.52,
+                desc: 'Lente delgada divergente. Los rayos paralelos incidentes se divergen hacia afuera como si provinieran de un foco virtual ($F$).',
+                theory: `
+                    <h4 class="font-bold text-amber-400 text-sm">Lente Bicóncava (Divergente)</h4>
+                    <p>Posee sus superficies curvadas hacia adentro (más delgada en el centro). Los rayos paralelos incidente se separan (divergen) al salir.</p>
+                    <p>Las prolongaciones virtuales de los rayos refractados se cruzan en el <strong>Foco Virtual ($F < 0$)</strong> del lado incidente.</p>
+                    <div class="bg-slate-950 p-3 rounded border border-slate-800 code-font text-rose-300 my-2">
+                        $$f = -\\frac{R}{2(n - 1)}$$
+                    </div>
+                `
+            },
+            {
+                id: 'plane_mirror',
+                name: '5. Reflexión en Espejo Plano',
+                shortName: 'Espejo Plano',
+                icon: 'fa-minus',
+                type: 'reflection',
+                shape: 'flat_mirror',
+                n: 1.0,
+                desc: 'Ley de la reflexión especular. El ángulo de incidencia es exactamente igual al ángulo de reflexión.',
+                theory: `
+                    <h4 class="font-bold text-amber-400 text-sm">Ley Fundamental de la Reflexión</h4>
+                    <p>En una superficie lisa y pulida, el rayo incidente, la normal a la superficie en el punto de incidencia y el rayo reflejado se encuentran en el mismo plano.</p>
+                    <div class="bg-slate-950 p-3 rounded border border-slate-800 code-font text-amber-300 my-2">
+                        $$\\theta_i = \\theta_r$$
+                    </div>
+                    <p>La imagen formada en un espejo plano es <em>virtual, derecha y de igual tamaño</em> que el objeto ($d_i = -d_o$).</p>
+                `
+            },
+            {
+                id: 'diffuse',
+                name: '6. Reflexión Difusa (Superficie Irregular)',
+                shortName: 'Reflexión Difusa',
+                icon: 'fa-water',
+                type: 'reflection',
+                shape: 'diffuse_mirror',
+                n: 1.0,
+                desc: 'Demuestra cómo una superficie rugosa micro-facetada dispersa rayos paralelos en múltiples direcciones aleatorias.',
+                theory: `
+                    <h4 class="font-bold text-amber-400 text-sm">Reflexión Difusa</h4>
+                    <p>Cuando la luz incide sobre una superficie con rugosidades comparables o mayores que la longitud de onda de la luz, las microscópicas normales $\\vec{n}_i$ de cada punto varían aleatoriamente.</p>
+                    <p>Aunque la Ley de Reflexión ($\\theta_i = \\theta_r$) se cumple en cada punto micro-local, los rayos reflejados se dispersan en múltiples ángulos, permitiendo ver objetos no especulares desde cualquier dirección.</p>
+                `
+            },
+            {
+                id: 'convex_mirror',
+                name: '7. Reflexión en Espejo Convexo',
+                shortName: 'Espejo Convexo',
+                icon: 'fa-ghost',
+                type: 'reflection',
+                shape: 'convex_mirror',
+                n: 1.0,
+                desc: 'Superficie reflectante curvada hacia afuera. Diverge los rayos paralelos con un foco virtual negativo.',
+                theory: `
+                    <h4 class="font-bold text-amber-400 text-sm">Espejo Esférico Convexo</h4>
+                    <p>Espejo donde la luz refleja en la cara exterior de la esfera. Siempre diverge los rayos incidentes paralelos.</p>
+                    <div class="bg-slate-950 p-3 rounded border border-slate-800 code-font text-cyan-300 my-2">
+                        $$f = -\\frac{R}{2}$$
+                    </div>
+                    <p>Genera imágenes <em>virtuales, derechas y de menor tamaño</em> que el objeto.</p>
+                `
+            },
+            {
+                id: 'concave_mirror',
+                name: '8. Reflexión en Espejo Cóncavo',
+                shortName: 'Espejo Cóncavo',
+                icon: 'fa-bowl-food',
+                type: 'reflection',
+                shape: 'concave_mirror',
+                n: 1.0,
+                desc: 'Superficie reflectante curvada hacia adentro. Converge los rayos paralelos incidentes en un foco real ($F = R/2$).',
+                theory: `
+                    <h4 class="font-bold text-amber-400 text-sm">Espejo Esférico Cóncavo</h4>
+                    <p>La luz incide en la cavidad interna de la superficie esférica. Los rayos paralelos al eje óptico se reflejan pasando por el punto focal real $F$.</p>
+                    <div class="bg-slate-950 p-3 rounded border border-slate-800 code-font text-emerald-300 my-2">
+                        $$\\frac{1}{f} = \\frac{1}{d_o} + \\frac{1}{d_i} = \\frac{2}{R}$$
+                    </div>
+                    <p>Para rayos paraxiales, el punto focal se ubica en $f = R/2$.</p>
+                `
+            }
+        ];
+
+        // --- GLOBAL APP STATE ---
+        const state = {
+            activeExpIndex: 0,
+            showGrid: true,
+            showNormals: true,
+            showFocus: true,
+            rayCount: 3,
+            laserPower: [true, true, true],
+            laserY: 0,
+            laserAngle: 0, // degrees
+            elementX: 0,   // Offset from center
+            elementY: 0,
+            elementAngle: 0, // degrees
+            n: 1.52,
+            radius: 120, // mm / px radius for curved optics
+            roughness: 5,
+            isDragging: false,
+            dragTarget: null, // 'laser' or 'element'
+            dragStartPos: { x: 0, y: 0 },
+            elementStartPos: { x: 0, y: 0 }
+        };
+
+        // DOM Elements
+        const canvas = document.getElementById('opticsCanvas');
+        const ctx = canvas.getContext('2d');
+        const experimentTabsContainer = document.getElementById('experimentTabs');
+
+        // Telemetry UI
+        const valThetaI = document.getElementById('valThetaI');
+        const valThetaR = document.getElementById('valThetaR');
+        const valDeviation = document.getElementById('valDeviation');
+        const valFocalLength = document.getElementById('valFocalLength');
+
+        // Sliders & UI
+        const sldLaserY = document.getElementById('sldLaserY');
+        const lblLaserY = document.getElementById('lblLaserY');
+        const sldLaserAngle = document.getElementById('sldLaserAngle');
+        const lblLaserAngle = document.getElementById('lblLaserAngle');
+        const sldN = document.getElementById('sldN');
+        const lblN = document.getElementById('lblN');
+        const sldRadius = document.getElementById('sldRadius');
+        const lblRadius = document.getElementById('lblRadius');
+        const sldElemAngle = document.getElementById('sldElemAngle');
+        const lblElemAngle = document.getElementById('lblElemAngle');
+        const sldRoughness = document.getElementById('sldRoughness');
+        const lblRoughness = document.getElementById('lblRoughness');
+        const elementNameBadge = document.getElementById('elementNameBadge');
+
+        // Laser Switches
+        const swLaser1 = document.getElementById('swLaser1');
+        const swLaser2 = document.getElementById('swLaser2');
+        const swLaser3 = document.getElementById('swLaser3');
+
+        // --- INITIALIZATION ---
+        window.addEventListener('load', () => {
+            initTabs();
+            resizeCanvas();
+            window.addEventListener('resize', resizeCanvas);
+            setupEventListeners();
+            loadExperiment(0);
+            requestAnimationFrame(animLoop);
+        });
+
+        function resizeCanvas() {
+            const rect = canvas.parentElement.getBoundingClientRect();
+            canvas.width = rect.width;
+            canvas.height = rect.height;
+        }
+
+        // Initialize preset experiment tabs
+        function initTabs() {
+            experimentTabsContainer.innerHTML = EXPERIMENTS.map((exp, idx) => `
+                <button onclick="loadExperiment(${idx})" id="tab-exp-${idx}" class="btn-exp px-3 py-2 rounded-lg border border-slate-800 bg-slate-800/40 hover:bg-slate-800 text-xs text-slate-300 font-medium flex items-center gap-2 whitespace-nowrap">
+                    <i class="fa-solid ${exp.icon} text-red-500"></i>
+                    <span>${exp.shortName}</span>
+                </button>
+            `).join('');
+        }
+
+        function loadExperiment(index) {
+            state.activeExpIndex = index;
+            const exp = EXPERIMENTS[index];
+
+            // Highlight Tab
+            EXPERIMENTS.forEach((_, i) => {
+                const btn = document.getElementById(`tab-exp-${i}`);
+                if (btn) {
+                    if (i === index) btn.classList.add('active');
+                    else btn.classList.remove('active');
+                }
+            });
+
+            // Reset transform state for element
+            state.elementX = 0;
+            state.elementY = 0;
+            state.elementAngle = 0;
+            state.laserY = 0;
+            state.laserAngle = 0;
+            state.n = exp.n;
+            
+            // Show/Hide relevant controls
+            elementNameBadge.textContent = exp.shortName;
+            sldN.value = exp.n;
+            lblN.textContent = exp.n.toFixed(3);
+
+            const groupN = document.getElementById('groupRefractiveIndex');
+            const groupCurvature = document.getElementById('groupCurvature');
+            const groupRoughness = document.getElementById('groupRoughness');
+
+            if (exp.type === 'reflection') {
+                groupN.classList.add('opacity-40', 'pointer-events-none');
+            } else {
+                groupN.classList.remove('opacity-40', 'pointer-events-none');
+            }
+
+            if (exp.shape === 'diffuse_mirror') {
+                groupRoughness.classList.remove('hidden');
+            } else {
+                groupRoughness.classList.add('hidden');
+            }
+
+            if (exp.shape === 'rectangle' || exp.shape === 'flat_mirror') {
+                groupCurvature.classList.add('opacity-40', 'pointer-events-none');
+            } else {
+                groupCurvature.classList.remove('opacity-40', 'pointer-events-none');
+            }
+
+            // Sync Sliders
+            sldLaserY.value = 0;
+            lblLaserY.textContent = '0 px';
+            sldLaserAngle.value = 0;
+            lblLaserAngle.textContent = '0.0°';
+            sldElemAngle.value = 0;
+            lblElemAngle.textContent = '0.0°';
+
+            // Update Theory HTML
+            document.getElementById('theoryDynamicContent').innerHTML = exp.theory;
+            if (window.renderMathInElement) {
+                renderMathInElement(document.getElementById('theoryDynamicContent'), {
+                    delimiters: [
+                        {left: '$$', right: '$$', display: true},
+                        {left: '$', right: '$', display: false}
+                    ]
+                });
+            }
+        }
+
+        // Preset Material Loader
+        window.setMaterial = function(nVal, name) {
+            state.n = nVal;
+            sldN.value = nVal;
+            lblN.textContent = `${nVal.toFixed(3)} (${name})`;
+        };
+
+        // Event Listeners setup
+        function setupEventListeners() {
+            // Sidebar Tabs switching
+            const btnControls = document.getElementById('tabBtnControls');
+            const btnTheory = document.getElementById('tabBtnTheory');
+            const btnAPA = document.getElementById('tabBtnAPA');
+
+            const pControls = document.getElementById('panelControls');
+            const pTheory = document.getElementById('panelTheory');
+            const pAPA = document.getElementById('panelAPA');
+
+            function switchPanel(activeBtn, activePanel) {
+                [btnControls, btnTheory, btnAPA].forEach(b => {
+                    b.classList.remove('text-red-400', 'border-red-500');
+                    b.classList.add('text-slate-400', 'border-transparent');
+                });
+                [pControls, pTheory, pAPA].forEach(p => p.classList.add('hidden'));
+
+                activeBtn.classList.remove('text-slate-400', 'border-transparent');
+                activeBtn.classList.add('text-red-400', 'border-red-500');
+                activePanel.classList.remove('hidden');
+            }
+
+            btnControls.addEventListener('click', () => switchPanel(btnControls, pControls));
+            btnTheory.addEventListener('click', () => switchPanel(btnTheory, pTheory));
+            btnAPA.addEventListener('click', () => switchPanel(btnAPA, pAPA));
+
+            // Laser Switches
+            swLaser1.addEventListener('click', () => { state.laserPower[0] = !state.laserPower[0]; swLaser1.classList.toggle('on'); });
+            swLaser2.addEventListener('click', () => { state.laserPower[1] = !state.laserPower[1]; swLaser2.classList.toggle('on'); });
+            swLaser3.addEventListener('click', () => { state.laserPower[2] = !state.laserPower[2]; swLaser3.classList.toggle('on'); });
+
+            // Ray Count Buttons
+            document.getElementById('btnRays1').addEventListener('click', (e) => setRayCount(1, e.target));
+            document.getElementById('btnRays3').addEventListener('click', (e) => setRayCount(3, e.target));
+            document.getElementById('btnRays5').addEventListener('click', (e) => setRayCount(5, e.target));
+
+            // Toggle Toggles
+            document.getElementById('btnToggleGrid').addEventListener('click', (e) => {
+                state.showGrid = !state.showGrid;
+                e.target.classList.toggle('bg-red-900/50');
+            });
+            document.getElementById('btnToggleNormals').addEventListener('click', (e) => {
+                state.showNormals = !state.showNormals;
+                e.target.classList.toggle('bg-red-900/50');
+            });
+            document.getElementById('btnToggleFocus').addEventListener('click', (e) => {
+                state.showFocus = !state.showFocus;
+                e.target.classList.toggle('bg-red-900/50');
+            });
+
+            document.getElementById('btnResetAll').addEventListener('click', () => {
+                state.elementX = 0;
+                state.elementY = 0;
+                state.elementAngle = 0;
+                state.laserY = 0;
+                state.laserAngle = 0;
+                sldLaserY.value = 0;
+                lblLaserY.textContent = '0 px';
+                sldLaserAngle.value = 0;
+                lblLaserAngle.textContent = '0.0°';
+                sldElemAngle.value = 0;
+                lblElemAngle.textContent = '0.0°';
+            });
+
+            // Sliders input events
+            sldLaserY.addEventListener('input', (e) => {
+                state.laserY = parseFloat(e.target.value);
+                lblLaserY.textContent = `${state.laserY} px`;
+            });
+            sldLaserAngle.addEventListener('input', (e) => {
+                state.laserAngle = parseFloat(e.target.value);
+                lblLaserAngle.textContent = `${state.laserAngle.toFixed(1)}°`;
+            });
+            sldN.addEventListener('input', (e) => {
+                state.n = parseFloat(e.target.value);
+                lblN.textContent = state.n.toFixed(3);
+            });
+            sldRadius.addEventListener('input', (e) => {
+                state.radius = parseFloat(e.target.value);
+                lblRadius.textContent = `${state.radius} mm`;
+            });
+            sldElemAngle.addEventListener('input', (e) => {
+                state.elementAngle = parseFloat(e.target.value);
+                lblElemAngle.textContent = `${state.elementAngle.toFixed(1)}°`;
+            });
+            sldRoughness.addEventListener('input', (e) => {
+                state.roughness = parseInt(e.target.value);
+                lblRoughness.textContent = state.roughness > 7 ? 'Muy Alta' : state.roughness > 4 ? 'Alta' : 'Moderada';
+            });
+
+            // Canvas Mouse/Touch Interaction
+            canvas.addEventListener('mousedown', handlePointerDown);
+            canvas.addEventListener('mousemove', handlePointerMove);
+            window.addEventListener('mouseup', handlePointerUp);
+
+            canvas.addEventListener('touchstart', (e) => handlePointerDown(e.touches[0]), {passive: false});
+            canvas.addEventListener('touchmove', (e) => handlePointerMove(e.touches[0]), {passive: false});
+            window.addEventListener('touchend', handlePointerUp);
+
+            // Wheel rotate
+            canvas.addEventListener('wheel', (e) => {
+                e.preventDefault();
+                state.elementAngle += e.deltaY > 0 ? 2 : -2;
+                state.elementAngle = (state.elementAngle + 180) % 360 - 180;
+                sldElemAngle.value = state.elementAngle;
+                lblElemAngle.textContent = `${state.elementAngle.toFixed(1)}°`;
+            }, {passive: false});
+        }
+
+        function setRayCount(count, targetBtn) {
+            state.rayCount = count;
+            ['btnRays1', 'btnRays3', 'btnRays5'].forEach(id => {
+                const b = document.getElementById(id);
+                b.className = 'px-2 py-1 rounded text-slate-400 hover:text-white';
+            });
+            targetBtn.className = 'px-2 py-1 rounded bg-red-600 text-white font-semibold shadow';
+        }
+
+        function handlePointerDown(e) {
+            const rect = canvas.getBoundingClientRect();
+            const mouseX = e.clientX - rect.left;
+            const mouseY = e.clientY - rect.top;
+
+            const cx = canvas.width / 2;
+            const cy = canvas.height / 2;
+
+            // Check Laser emitter click
+            const laserBoxX = 80;
+            const laserBoxY = cy + state.laserY;
+            if (Math.hypot(mouseX - laserBoxX, mouseY - laserBoxY) < 60) {
+                state.isDragging = true;
+                state.dragTarget = 'laser';
+                state.dragStartPos = { x: mouseX, y: mouseY };
+                state.elementStartPos = { x: state.laserY, y: 0 };
+                return;
+            }
+
+            // Check Optical Element click
+            const elemCenterX = cx + state.elementX;
+            const elemCenterY = cy + state.elementY;
+            if (Math.hypot(mouseX - elemCenterX, mouseY - elemCenterY) < 100) {
+                state.isDragging = true;
+                state.dragTarget = 'element';
+                state.dragStartPos = { x: mouseX, y: mouseY };
+                state.elementStartPos = { x: state.elementX, y: state.elementY };
+            }
+        }
+
+        function handlePointerMove(e) {
+            if (!state.isDragging) return;
+            const rect = canvas.getBoundingClientRect();
+            const mouseX = e.clientX - rect.left;
+            const mouseY = e.clientY - rect.top;
+
+            const dx = mouseX - state.dragStartPos.x;
+            const dy = mouseY - state.dragStartPos.y;
+
+            if (state.dragTarget === 'laser') {
+                state.laserY = Math.max(-200, Math.min(200, state.elementStartPos.x + dy));
+                sldLaserY.value = state.laserY;
+                lblLaserY.textContent = `${Math.round(state.laserY)} px`;
+            } else if (state.dragTarget === 'element') {
+                state.elementX = state.elementStartPos.x + dx;
+                state.elementY = state.elementStartPos.y + dy;
+            }
+        }
+
+        function handlePointerUp() {
+            state.isDragging = false;
+            state.dragTarget = null;
+        }
+
+
+        // =========================================================================
+        // RAY TRACING & GEOMETRY ENGINE (SNELL & REFLECTION)
+        // =========================================================================
+
+        function animLoop() {
+            render();
+            requestAnimationFrame(animLoop);
+        }
+
+        function render() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            const cx = canvas.width / 2;
+            const cy = canvas.height / 2;
+
+            // 1. Draw Optical Disk Protractor Background
+            if (state.showGrid) {
+                drawOpticalDisk(cx, cy);
+            }
+
+            // 2. Obtain current element geometry lines/arcs
+            const element = getElementGeometry(cx + state.elementX, cy + state.elementY);
+
+            // 3. Draw Optical Element Shape
+            drawElement(element);
+
+            // 4. Generate and Trace Laser Rays
+            const rays = generateLaserRays(cy);
+            let telemetryData = { thetaI: 0, thetaR: 0, deviation: 0, focalLen: null };
+
+            rays.forEach((ray, rayIdx) => {
+                if (!ray.active) return;
+                traceRayPath(ray, element, telemetryData, rayIdx === Math.floor(rays.length / 2));
+            });
+
+            // 5. Draw Physical Laser Emitter Box (Orange Box GX-5002)
+            drawLaserEmitterBox(cy);
+
+            // 6. Update Telemetry UI Display
+            updateTelemetryUI(telemetryData);
+        }
+
+        // Draw Goniometer Disk (Protractor Grid)
+        function drawOpticalDisk(cx, cy) {
+            ctx.save();
+            ctx.translate(cx, cy);
+
+            const radius = Math.min(canvas.width, canvas.height) * 0.42;
+
+            // Outer ring
+            ctx.beginPath();
+            ctx.arc(0, 0, radius, 0, Math.PI * 2);
+            ctx.strokeStyle = 'rgba(239, 68, 68, 0.4)';
+            ctx.lineWidth = 2;
+            ctx.stroke();
+
+            // Background subtle radial gradient
+            const radGrad = ctx.createRadialGradient(0, 0, 10, 0, 0, radius);
+            radGrad.addColorStop(0, 'rgba(30, 41, 59, 0.4)');
+            radGrad.addColorStop(1, 'rgba(15, 23, 42, 0.8)');
+            ctx.fillStyle = radGrad;
+            ctx.fill();
+
+            // Grid lines (Cartesian)
+            ctx.strokeStyle = 'rgba(255, 255, 255, 0.08)';
+            ctx.lineWidth = 1;
+
+            ctx.beginPath();
+            ctx.moveTo(-radius, 0); ctx.lineTo(radius, 0);
+            ctx.moveTo(0, -radius); ctx.lineTo(0, radius);
+            ctx.stroke();
+
+            // Degree marks (0° to 360°)
+            ctx.fillStyle = 'rgba(226, 232, 240, 0.4)';
+            ctx.font = '10px Inter';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+
+            for (let deg = 0; deg < 360; deg += 5) {
+                const rad = (deg * Math.PI) / 180;
+                const isMajor = deg % 10 === 0;
+                const tickLen = isMajor ? 12 : 6;
+
+                const x1 = (radius - tickLen) * Math.cos(rad);
+                const y1 = (radius - tickLen) * Math.sin(rad);
+                const x2 = radius * Math.cos(rad);
+                const y2 = radius * Math.sin(rad);
+
+                ctx.beginPath();
+                ctx.moveTo(x1, y1);
+                ctx.lineTo(x2, y2);
+                ctx.strokeStyle = isMajor ? 'rgba(239, 68, 68, 0.6)' : 'rgba(255, 255, 255, 0.15)';
+                ctx.stroke();
+
+                if (deg % 30 === 0) {
+                    const tx = (radius - 24) * Math.cos(rad);
+                    const ty = (radius - 24) * Math.sin(rad);
+                    ctx.fillText(`${deg}°`, tx, ty);
+                }
+            }
+
+            ctx.restore();
+        }
+
+        // Draw Orange Laser Emitter Box
+        function drawLaserEmitterBox(cy) {
+            const x = 30;
+            const y = cy + state.laserY;
+            const w = 110;
+            const h = 130;
+            const rad = state.laserAngle * Math.PI / 180;
+
+            ctx.save();
+            ctx.translate(x + w/2, y);
+            ctx.rotate(rad);
+
+            // Main Orange Enclosure
+            ctx.fillStyle = '#f97316'; // Orange-500
+            ctx.strokeStyle = '#c2410c';
+            ctx.lineWidth = 3;
+            ctx.beginPath();
+            ctx.roundRect(-w/2, -h/2, w, h, 12);
+            ctx.fill();
+            ctx.stroke();
+
+            // Label text on emitter
+            ctx.fillStyle = '#ffffff';
+            ctx.font = 'bold 10px Inter';
+            ctx.textAlign = 'center';
+            ctx.fillText('GX-5002 LASER', 0, -h/2 + 18);
+
+            // Laser apertures
+            const rayOffsets = getRayOffsets();
+            rayOffsets.forEach((offsetY, idx) => {
+                const apY = offsetY;
+                ctx.fillStyle = state.laserPower[idx % 3] ? '#ef4444' : '#475569';
+                ctx.beginPath();
+                ctx.arc(w/2 - 8, apY, 5, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.strokeStyle = '#7f1d1d';
+                ctx.lineWidth = 1.5;
+                ctx.stroke();
+            });
+
+            ctx.restore();
+        }
+
+        function getRayOffsets() {
+            if (state.rayCount === 1) return [0];
+            if (state.rayCount === 3) return [-28, 0, 28];
+            if (state.rayCount === 5) return [-40, -20, 0, 20, 40];
+            return [0];
+        }
+
+        function generateLaserRays(cy) {
+            const startX = 30 + 110; // Right side of emitter box
+            const startY = cy + state.laserY;
+            const angleRad = state.laserAngle * Math.PI / 180;
+
+            const offsets = getRayOffsets();
+
+            return offsets.map((offY, idx) => {
+                // Rotate offset around laser center
+                const rx = startX + (0 * Math.cos(angleRad) - offY * Math.sin(angleRad));
+                const ry = startY + (0 * Math.sin(angleRad) + offY * Math.cos(angleRad));
+
+                return {
+                    x: rx,
+                    y: ry,
+                    dirX: Math.cos(angleRad),
+                    dirY: Math.sin(angleRad),
+                    active: state.laserPower[idx % 3] !== false,
+                    intensity: 1.0,
+                    n: 1.0 // Initial medium: Air
+                };
+            });
+        }
+
+        // =========================================================================
+        // GEOMETRY BUILDER FOR OPTICAL ELEMENTS
+        // =========================================================================
+
+        function getElementGeometry(centerX, centerY) {
+            const exp = EXPERIMENTS[state.activeExpIndex];
+            const angleRad = state.elementAngle * Math.PI / 180;
+            const R = state.radius;
+
+            return {
+                type: exp.shape,
+                n: state.n,
+                x: centerX,
+                y: centerY,
+                angle: angleRad,
+                R: R,
+                expType: exp.type
+            };
+        }
+
+        function drawElement(elem) {
+            ctx.save();
+            ctx.translate(elem.x, elem.y);
+            ctx.rotate(elem.angle);
+
+            ctx.fillStyle = 'rgba(56, 189, 248, 0.18)'; // Glass tint cyan
+            ctx.strokeStyle = 'rgba(56, 189, 248, 0.7)';
+            ctx.lineWidth = 2;
+
+            if (elem.type === 'rectangle') {
+                const w = 120, h = 180;
+                ctx.beginPath();
+                ctx.rect(-w/2, -h/2, w, h);
+                ctx.fill();
+                ctx.stroke();
+
+                // Diagonal reflection highlights
+                ctx.strokeStyle = 'rgba(255, 255, 255, 0.2)';
+                ctx.beginPath();
+                ctx.moveTo(-w/2 + 10, -h/2 + 20); ctx.lineTo(-w/2 + 30, -h/2 + 20);
+                ctx.stroke();
+            }
+            else if (elem.type === 'prism') {
+                const side = 150;
+                const h = side * Math.sin(Math.PI / 3);
+                ctx.beginPath();
+                ctx.moveTo(-side/2, h/3);
+                ctx.lineTo(side/2, h/3);
+                ctx.lineTo(0, -2*h/3);
+                ctx.closePath();
+                ctx.fill();
+                ctx.stroke();
+            }
+            else if (elem.type === 'biconvex') {
+                const R = elem.R;
+                const h = 140;
+                // Calculate arc separation
+                const d = Math.sqrt(Math.max(10, R*R - (h/2)*(h/2)));
+                
+                ctx.beginPath();
+                // Left arc
+                ctx.arc(-d, 0, R, -Math.asin((h/2)/R), Math.asin((h/2)/R), false);
+                // Right arc
+                ctx.arc(d, 0, R, Math.PI - Math.asin((h/2)/R), Math.PI + Math.asin((h/2)/R), false);
+                ctx.closePath();
+                ctx.fill();
+                ctx.stroke();
+            }
+            else if (elem.type === 'biconcave') {
+                const R = elem.R;
+                const h = 140;
+                const w = 60;
+                const offset = R - w/2;
+
+                ctx.beginPath();
+                ctx.moveTo(-w/2, -h/2);
+                ctx.lineTo(w/2, -h/2);
+                // Right concave arc inwards
+                ctx.arc(w/2 + offset, 0, R, Math.PI + Math.asin((h/2)/R), Math.PI - Math.asin((h/2)/R), true);
+                ctx.lineTo(-w/2, h/2);
+                // Left concave arc inwards
+                ctx.arc(-w/2 - offset, 0, R, Math.asin((h/2)/R), -Math.asin((h/2)/R), true);
+                ctx.closePath();
+                ctx.fill();
+                ctx.stroke();
+            }
+            else if (elem.type === 'flat_mirror') {
+                const len = 180;
+                ctx.fillStyle = 'rgba(148, 163, 184, 0.4)';
+                ctx.fillRect(-8, -len/2, 16, len);
+                
+                // Front mirror line
+                ctx.strokeStyle = '#38bdf8';
+                ctx.lineWidth = 3;
+                ctx.beginPath();
+                ctx.moveTo(-8, -len/2); ctx.lineTo(-8, len/2);
+                ctx.stroke();
+
+                // Back hatch pattern
+                ctx.strokeStyle = 'rgba(255, 255, 255, 0.3)';
+                ctx.lineWidth = 1;
+                for (let y = -len/2 + 5; y < len/2; y += 12) {
+                    ctx.beginPath();
+                    ctx.moveTo(-8, y);
+                    ctx.lineTo(8, y + 8);
+                    ctx.stroke();
+                }
+            }
+            else if (elem.type === 'diffuse_mirror') {
+                const len = 180;
+                ctx.strokeStyle = '#f97316';
+                ctx.lineWidth = 2.5;
+                ctx.beginPath();
+                
+                const numFacets = 24;
+                const step = len / numFacets;
+                ctx.moveTo(0, -len/2);
+
+                for (let i = 0; i <= numFacets; i++) {
+                    const y = -len/2 + i * step;
+                    const noise = (Math.sin(i * 99) * 0.5 + Math.cos(i * 33) * 0.5) * (state.roughness * 1.2);
+                    ctx.lineTo(noise, y);
+                }
+                ctx.stroke();
+            }
+            else if (elem.type === 'convex_mirror' || elem.type === 'concave_mirror') {
+                const R = elem.R;
+                const angleSpan = Math.PI / 3;
+                const isConvex = elem.type === 'convex_mirror';
+
+                ctx.strokeStyle = '#38bdf8';
+                ctx.lineWidth = 3;
+                ctx.beginPath();
+                
+                const centerDist = isConvex ? R - 20 : -R + 20;
+                const startA = isConvex ? Math.PI - angleSpan/2 : -angleSpan/2;
+                const endA = isConvex ? Math.PI + angleSpan/2 : angleSpan/2;
+
+                ctx.arc(centerDist, 0, R, startA, endA);
+                ctx.stroke();
+            }
+
+            ctx.restore();
+        }
+
+        // =========================================================================
+        // RAY TRACER SOLVER & RAYS INTERSECTION
+        // =========================================================================
+
+        function traceRayPath(ray, elem, telemetry, isCenterRay) {
+            let currentX = ray.x;
+            let currentY = ray.y;
+            let dirX = ray.dirX;
+            let dirY = ray.dirY;
+            let currentN = 1.0; // Starts in air
+
+            const maxBounces = 8;
+            const points = [{ x: currentX, y: currentY }];
+
+            for (let bounce = 0; bounce < maxBounces; bounce++) {
+                const hit = findClosestIntersection(currentX, currentY, dirX, dirY, elem, currentN);
+
+                if (!hit) {
+                    // Extrapolate to edge of screen
+                    points.push({
+                        x: currentX + dirX * 2000,
+                        y: currentY + dirY * 2000
+                    });
+                    break;
+                }
+
+                // Add intersection point
+                points.push({ x: hit.x, y: hit.y });
+
+                // Telemetry computation for main center ray
+                if (isCenterRay && bounce === 0) {
+                    const cosI = Math.abs(dirX * hit.nx + dirY * hit.ny);
+                    const thetaI_deg = Math.acos(Math.min(1.0, cosI)) * 180 / Math.PI;
+                    telemetry.thetaI = thetaI_deg;
+
+                    if (hit.isRefraction) {
+                        const sinR = (currentN / hit.nextN) * Math.sin(thetaI_deg * Math.PI / 180);
+                        telemetry.thetaR = Math.asin(Math.min(1.0, sinR)) * 180 / Math.PI;
+                        telemetry.deviation = Math.abs(thetaI_deg - telemetry.thetaR);
+                    } else {
+                        telemetry.thetaR = thetaI_deg;
+                        telemetry.deviation = 180 - 2 * thetaI_deg;
+                    }
+
+                    if (elem.expType === 'lens') {
+                        telemetry.focalLen = elem.R / (2 * (elem.n - 1));
+                    } else if (elem.expType === 'reflection' && elem.R) {
+                        telemetry.focalLen = elem.R / 2;
+                    }
+                }
+
+                // Draw Normal lines & Angle Annotations
+                if (state.showNormals) {
+                    drawNormalLine(hit.x, hit.y, hit.nx, hit.ny);
+                }
+
+                // Update Ray direction based on Snell or Reflection Law
+                currentX = hit.x + hit.nx * 0.01; // Avoid self-intersection
+                currentY = hit.y + hit.ny * 0.01;
+                dirX = hit.outDirX;
+                dirY = hit.outDirY;
+                currentN = hit.nextN;
+            }
+
+            // Draw glowing laser line segment
+            drawGlowingRayPath(points);
+        }
+
+        function drawGlowingRayPath(points) {
+            ctx.save();
+            
+            // Outer glow
+            ctx.shadowColor = '#ef4444';
+            ctx.shadowBlur = 12;
+            ctx.strokeStyle = 'rgba(239, 68, 68, 0.85)';
+            ctx.lineWidth = 2.5;
+
+            ctx.beginPath();
+            ctx.moveTo(points[0].x, points[0].y);
+            for (let i = 1; i < points.length; i++) {
+                ctx.lineTo(points[i].x, points[i].y);
+            }
+            ctx.stroke();
+
+            // Intense white core ray line
+            ctx.shadowBlur = 0;
+            ctx.strokeStyle = '#ffffff';
+            ctx.lineWidth = 1;
+            ctx.beginPath();
+            ctx.moveTo(points[0].x, points[0].y);
+            for (let i = 1; i < points.length; i++) {
+                ctx.lineTo(points[i].x, points[i].y);
+            }
+            ctx.stroke();
+
+            ctx.restore();
+        }
+
+        function drawNormalLine(x, y, nx, ny) {
+            ctx.save();
+            ctx.strokeStyle = 'rgba(56, 189, 248, 0.6)'; // Cyan normal
+            ctx.lineWidth = 1;
+            ctx.setLineDash([4, 4]);
+
+            ctx.beginPath();
+            ctx.moveTo(x - nx * 40, y - ny * 40);
+            ctx.lineTo(x + nx * 40, y + ny * 40);
+            ctx.stroke();
+            ctx.restore();
+        }
+
+        // =========================================================================
+        // NUMERICAL INTERSECTION SOLVERS (LINES, ARCS & ROUGH SURFACES)
+        // =========================================================================
+
+        function findClosestIntersection(rx, ry, rdx, rdy, elem, currentN) {
+            let closestHit = null;
+            let minDist = Infinity;
+
+            // Transform ray into element local coordinate space
+            const cosA = Math.cos(-elem.angle);
+            const sinA = Math.sin(-elem.angle);
+
+            const dx = rx - elem.x;
+            const dy = ry - elem.y;
+            const lx = dx * cosA - dy * sinA;
+            const ly = dx * sinA + dy * cosA;
+            const ldx = rdx * cosA - rdy * sinA;
+            const ldy = rdx * sinA + rdy * cosA;
+
+            const nextMediumN = currentN === 1.0 ? elem.n : 1.0;
+
+            // Helper to evaluate hit distance
+            function checkHit(t, lnx, lny, isRefraction = true) {
+                if (t > 0.1 && t < minDist) {
+                    minDist = t;
+                    // Transform hit point back to world coordinates
+                    const hitLx = lx + ldx * t;
+                    const hitLy = ly + ldy * t;
+                    const wx = elem.x + (hitLx * Math.cos(elem.angle) - hitLy * Math.sin(elem.angle));
+                    const wy = elem.y + (hitLx * Math.sin(elem.angle) + hitLy * Math.cos(elem.angle));
+
+                    // World normal
+                    const wnx = lnx * Math.cos(elem.angle) - lny * Math.sin(elem.angle);
+                    const wny = lnx * Math.sin(elem.angle) + lny * Math.cos(elem.angle);
+
+                    // Compute Refracted/Reflected ray direction
+                    const outDir = computeOutboundVector(rdx, rdy, wnx, wny, currentN, isRefraction ? nextMediumN : currentN, isRefraction);
+
+                    closestHit = {
+                        t: t,
+                        x: wx,
+                        y: wy,
+                        nx: wnx,
+                        ny: wny,
+                        outDirX: outDir.x,
+                        outDirY: outDir.y,
+                        nextN: isRefraction ? nextMediumN : currentN,
+                        isRefraction: isRefraction
+                    };
+                }
+            }
+
+            // 1. RECTANGLE
+            if (elem.type === 'rectangle') {
+                const w = 120, h = 180;
+                intersectSegment(lx, ly, ldx, ldy, -w/2, -h/2, -w/2, h/2, (t) => checkHit(t, -1, 0));
+                intersectSegment(lx, ly, ldx, ldy, w/2, -h/2, w/2, h/2, (t) => checkHit(t, 1, 0));
+                intersectSegment(lx, ly, ldx, ldy, -w/2, -h/2, w/2, -h/2, (t) => checkHit(t, 0, -1));
+                intersectSegment(lx, ly, ldx, ldy, -w/2, h/2, w/2, h/2, (t) => checkHit(t, 0, 1));
+            }
+            // 2. PRISM
+            else if (elem.type === 'prism') {
+                const side = 150;
+                const h = side * Math.sin(Math.PI / 3);
+                const p1 = { x: -side/2, y: h/3 };
+                const p2 = { x: side/2, y: h/3 };
+                const p3 = { x: 0, y: -2*h/3 };
+
+                intersectSegment(lx, ly, ldx, ldy, p1.x, p1.y, p2.x, p2.y, (t) => checkHit(t, 0, 1));
+                intersectSegment(lx, ly, ldx, ldy, p2.x, p2.y, p3.x, p3.y, (t) => {
+                    const norm = getLineNormal(p2, p3);
+                    checkHit(t, norm.x, norm.y);
+                });
+                intersectSegment(lx, ly, ldx, ldy, p3.x, p3.y, p1.x, p1.y, (t) => {
+                    const norm = getLineNormal(p3, p1);
+                    checkHit(t, norm.x, norm.y);
+                });
+            }
+            // 3. BICONVEX LENS
+            else if (elem.type === 'biconvex') {
+                const R = elem.R;
+                const h = 140;
+                const d = Math.sqrt(Math.max(10, R*R - (h/2)*(h/2)));
+
+                // Left Circle arc center (-d, 0)
+                intersectCircleArc(lx, ly, ldx, ldy, -d, 0, R, -h/2, h/2, (t, hx, hy) => {
+                    const lnx = (hx - (-d)) / R;
+                    const lny = hy / R;
+                    checkHit(t, lnx, lny);
+                });
+                // Right Circle arc center (d, 0)
+                intersectCircleArc(lx, ly, ldx, ldy, d, 0, R, -h/2, h/2, (t, hx, hy) => {
+                    const lnx = (hx - d) / R;
+                    const lny = hy / R;
+                    checkHit(t, lnx, lny);
+                });
+            }
+            // 4. BICONCAVE LENS
+            else if (elem.type === 'biconcave') {
+                const R = elem.R;
+                const h = 140, w = 60;
+                const offset = R - w/2;
+
+                intersectCircleArc(lx, ly, ldx, ldy, w/2 + offset, 0, R, -h/2, h/2, (t, hx, hy) => {
+                    const lnx = -(hx - (w/2 + offset)) / R;
+                    const lny = -hy / R;
+                    checkHit(t, lnx, lny);
+                });
+                intersectCircleArc(lx, ly, ldx, ldy, -w/2 - offset, 0, R, -h/2, h/2, (t, hx, hy) => {
+                    const lnx = -(hx - (-w/2 - offset)) / R;
+                    const lny = -hy / R;
+                    checkHit(t, lnx, lny);
+                });
+            }
+            // 5. FLAT MIRROR
+            else if (elem.type === 'flat_mirror') {
+                const len = 180;
+                intersectSegment(lx, ly, ldx, ldy, -8, -len/2, -8, len/2, (t) => {
+                    checkHit(t, -1, 0, false); // Reflection only
+                });
+            }
+            // 6. DIFFUSE MIRROR
+            else if (elem.type === 'diffuse_mirror') {
+                const len = 180;
+                const numFacets = 24;
+                const step = len / numFacets;
+
+                for (let i = 0; i < numFacets; i++) {
+                    const y1 = -len/2 + i * step;
+                    const y2 = -len/2 + (i + 1) * step;
+                    const x1 = (Math.sin(i * 99) * 0.5 + Math.cos(i * 33) * 0.5) * (state.roughness * 1.2);
+                    const x2 = (Math.sin((i+1) * 99) * 0.5 + Math.cos((i+1) * 33) * 0.5) * (state.roughness * 1.2);
+
+                    intersectSegment(lx, ly, ldx, ldy, x1, y1, x2, y2, (t) => {
+                        const norm = getLineNormal({x: x1, y: y1}, {x: x2, y: y2});
+                        checkHit(t, norm.x, norm.y, false);
+                    });
+                }
+            }
+            // 7 & 8. CONCAVE / CONVEX MIRROR
+            else if (elem.type === 'convex_mirror' || elem.type === 'concave_mirror') {
+                const R = elem.R;
+                const isConvex = elem.type === 'convex_mirror';
+                const centerDist = isConvex ? R - 20 : -R + 20;
+
+                intersectCircleArc(lx, ly, ldx, ldy, centerDist, 0, R, -90, 90, (t, hx, hy) => {
+                    let lnx = (hx - centerDist) / R;
+                    let lny = hy / R;
+                    if (!isConvex) { lnx = -lnx; lny = -lny; }
+                    checkHit(t, lnx, lny, false); // Reflection
+                });
+            }
+
+            return closestHit;
+        }
+
+        // Segment Intersection
+        function intersectSegment(lx, ly, ldx, ldy, x1, y1, x2, y2, callback) {
+            const dx = x2 - x1;
+            const dy = y2 - y1;
+            const det = ldx * dy - ldy * dx;
+            if (Math.abs(det) < 1e-6) return;
+
+            const t = ((x1 - lx) * dy - (y1 - ly) * dx) / det;
+            const u = ((x1 - lx) * ldy - (y1 - ly) * ldx) / det;
+
+            if (t > 0.01 && u >= 0 && u <= 1) {
+                callback(t);
+            }
+        }
+
+        // Circle Arc Intersection
+        function intersectCircleArc(lx, ly, ldx, ldy, cx, cy, R, minY, maxY, callback) {
+            const ox = lx - cx;
+            const oy = ly - cy;
+
+            const a = ldx * ldx + ldy * ldy;
+            const b = 2 * (ox * ldx + oy * ldy);
+            const c = ox * ox + oy * oy - R * R;
+
+            const disc = b * b - 4 * a * c;
+            if (disc < 0) return;
+
+            const sqrtD = Math.sqrt(disc);
+            const t1 = (-b - sqrtD) / (2 * a);
+            const t2 = (-b + sqrtD) / (2 * a);
+
+            [t1, t2].forEach(t => {
+                if (t > 0.01) {
+                    const hy = ly + ldy * t;
+                    if (hy >= minY && hy <= maxY) {
+                        const hx = lx + ldx * t;
+                        callback(t, hx, hy);
+                    }
+                }
+            });
+        }
+
+        function getLineNormal(p1, p2) {
+            const dx = p2.x - p1.x;
+            const dy = p2.y - p1.y;
+            const len = Math.hypot(dx, dy);
+            return { x: -dy / len, y: dx / len };
+        }
+
+        // Vector formulation of Snell's Law and Reflection
+        function computeOutboundVector(dirX, dirY, nx, ny, n1, n2, isRefraction) {
+            let cosI = -(dirX * nx + dirY * ny);
+            let normalX = nx;
+            let normalY = ny;
+
+            // Orient normal opposite to incident ray
+            if (cosI < 0) {
+                cosI = -cosI;
+                normalX = -nx;
+                normalY = -ny;
+            }
+
+            if (!isRefraction) {
+                // Pure Law of Reflection: r = d + 2(n · -d)n
+                return {
+                    x: dirX + 2 * cosI * normalX,
+                    y: dirY + 2 * cosI * normalY
+                };
+            }
+
+            // Snell's Law Vector Form
+            const eta = n1 / n2;
+            const k = 1 - eta * eta * (1 - cosI * cosI);
+
+            // Total Internal Reflection (TIR)
+            if (k < 0) {
+                return {
+                    x: dirX + 2 * cosI * normalX,
+                    y: dirY + 2 * cosI * normalY
+                };
+            }
+
+            return {
+                x: eta * dirX + (eta * cosI - Math.sqrt(k)) * normalX,
+                y: eta * dirY + (eta * cosI - Math.sqrt(k)) * normalY
+            };
+        }
+
+        // Telemetry readout updater
+        function updateTelemetryUI(data) {
+            valThetaI.textContent = `${data.thetaI.toFixed(1)}°`;
+            valThetaR.textContent = `${data.thetaR.toFixed(1)}°`;
+            valDeviation.textContent = `${data.deviation.toFixed(1)}°`;
+            valFocalLength.textContent = data.focalLen ? `${data.focalLen.toFixed(1)} mm` : '-- mm';
+        }
+    </script>
+<footer class="pie-pagina-simple">
+  <p>Desarrollado por <strong>Gustavo Lazarte, Alejandra Lucia Pérez Lucero, Vicente Capuano - UNC-FCEFyN-PROMEF</strong> &copy; 2026</p>
+</footer>
+</body>
+</html>
