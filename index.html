@@ -215,7 +215,7 @@
                             Isaac Newton defendía la teoría corpuscular argumentando la rectilineguridad de la sombra. Simultáneamente, Christiaan Huygens proponía la teoría ondulatoria para explicar la propagación y frente de ondas.
                         </p>
                         <div class="flex items-center space-x-4 pt-2 text-xs text-slate-400">
-                            <span><i class="fa-solid fa-user-science text-cyan-400 mr-1"></i> Protagonistas: Newton, Huygens, Young</span>
+                            <span id="evo-protagonists"><i class="fa-solid fa-user-science text-cyan-400 mr-1"></i> Protagonistas: Newton, Huygens</span>
                         </div>
                     </div>
                 </div>
@@ -362,21 +362,25 @@
             {
                 title: "Siglo XVII: Corpúsculos vs. Ondas",
                 desc: "Isaac Newton defendía la teoría corpuscular (partículas rectilíneas), mientras Christiaan Huygens proponía la teoría ondulatoria basándose en frentes de onda.",
+                protagonists: "Newton, Huygens",
                 type: "corpuscle"
             },
             {
                 title: "Siglo XIX: Ondas Electromagnéticas",
                 desc: "Thomas Young demostró la naturaleza ondulatoria con el experimento de la doble rendija (1801). Más tarde, James Clerk Maxwell unificó electricidad y magnetismo mostrando que la luz es una onda electromagnética.",
+                protagonists: "Young, Maxwell",
                 type: "wave"
             },
             {
                 title: "Siglo XX: Fotones y Cuantos",
                 desc: "Max Planck y Albert Einstein resolvieron el efecto fotoeléctrico postulando que la luz se comporta como paquetes discretos de energía llamados fotones ($E = h\\nu$).",
+                protagonists: "Planck, Einstein",
                 type: "photon"
             },
             {
                 title: "Era Moderna: Emisión Estimulada (LÁSER)",
                 desc: "Basado en la emisión estimulada postulada por Einstein (1917), Theodore Maiman construyó el primer láser de rubí en 1960, generando luz coherente, monocromática y altamente direccional.",
+                protagonists: "Einstein, Maiman",
                 type: "laser"
             }
         ];
@@ -397,6 +401,7 @@
             }
             document.getElementById('evo-title').innerText = evoSteps[idx].title;
             document.getElementById('evo-desc').innerText = evoSteps[idx].desc;
+            document.getElementById('evo-protagonists').innerHTML = `<i class="fa-solid fa-user-science text-cyan-400 mr-1"></i> Protagonistas: ${evoSteps[idx].protagonists}`;
         }
 
         function animateEvoCanvas() {
